@@ -163,7 +163,7 @@ textarea.input,
 .action-card,
 .hero-card,
 .info-banner {
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
 
 * {
@@ -202,6 +202,23 @@ h3,
 button {
   font: inherit;
   cursor: pointer;
+}
+
+/* Keyboard focus is a first-class state, like in any real app. :where keeps
+   specificity at zero so components with their own focus styling still win. */
+:where(button, a, [role='button']):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Icon layers (see icons.tsx). duo is the accent area the active rail item
+   lights up; fl is the solid variant the phone's active tab swaps in. */
+.ic-duo {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.ic-fl {
+  display: none;
 }
 
 a {
@@ -1134,6 +1151,32 @@ select.input:focus {
   display: none;
 }
 
+/* The Ctrl+K hint chip in page headers. Hidden on phones: no keyboard. */
+.kbd-hint {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.kbd-hint:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.kbd-hint kbd {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 10.5px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
 /* Collapsing the sidebar is a desktop affordance; the phone nav is a bottom
    tab strip with nothing to collapse. */
 .nav-collapse {
@@ -1468,6 +1511,14 @@ select.input:focus {
   .nav-btn .nav-bar {
     display: none;
   }
+  /* The iOS tab grammar: the active tab doesn't just change colour — the
+     outline becomes solid. Icons without a filled variant keep the stroke. */
+  .nav-btn.active svg.has-fl .ic-st {
+    display: none;
+  }
+  .nav-btn.active svg.has-fl .ic-fl {
+    display: block;
+  }
   /* The mark belongs on the login screen and the home header, not competing
      for room with the tabs. */
   .nav-brand {
@@ -1553,6 +1604,26 @@ select.input:focus {
   }
   .app-header.stuck {
     border-bottom-color: var(--border);
+  }
+
+  /* Tool, not brochure: firmer corners and a shallow shadow. The float-y
+     22px radius + long shadow reads "cute website"; software is precise.
+     The phone keeps its iOS rounding — this block never reaches it. */
+  :root {
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --radius-sm: 8px;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05);
+  }
+
+  /* Active rail item in duotone: accent stroke + the icon's signature area
+     filled at 18%. */
+  .nav-btn.active .ic-duo {
+    opacity: 0.18;
+  }
+
+  .kbd-hint {
+    display: inline-flex;
   }
 
   /* Reaching for a round button in the far corner is a thumb pattern; on a

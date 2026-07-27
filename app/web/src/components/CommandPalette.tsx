@@ -55,8 +55,16 @@ export default function CommandPalette() {
         setOpen((v) => !v);
       }
     }
+    // The "Buscar ⌘K" chip in page headers opens the palette by mouse too.
+    function onChip() {
+      setOpen((v) => !v);
+    }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('rikari:cmdk', onChip);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('rikari:cmdk', onChip);
+    };
   }, []);
 
   useEffect(() => {
