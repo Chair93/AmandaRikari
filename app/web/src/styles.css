@@ -371,6 +371,30 @@ a {
   color: var(--expense-text);
   background: var(--expense-soft);
 }
+/* The seven-day strip in Agenda. Lives in CSS rather than an inline style so
+   the mobile rule can widen it — an inline min-width would always win. */
+.agenda-week {
+  display: flex;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* A pill used as a full-width row (Home's reminders). The default nowrap
+   pushes long reminder text past the right edge of a phone instead of
+   wrapping it. */
+.pill.block {
+  display: block;
+  width: 100%;
+  /* .pill starts from `all: unset`, which drops the global border-box, so
+     without this the 16px side padding is added on top of the full width
+     and the row hangs off the screen. */
+  box-sizing: border-box;
+  white-space: normal;
+  text-align: left;
+  padding: 12px 16px;
+  line-height: 1.4;
+}
 .pill.ghost {
   background: transparent;
   color: var(--text-muted);
@@ -546,6 +570,25 @@ a {
   padding: 13px 18px;
   background: var(--surface);
 }
+/* Buttons grouped at the end of a row. Kept as a class rather than inline
+   styles so the mobile rules below can actually reach it — on a phone there
+   is never room for name, numbers and actions on one line, and without this
+   the buttons were pushed off the right edge with no way to scroll to them. */
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  flex-wrap: wrap;
+}
+/* Numbers/badges sitting between the label and the actions. */
+.row-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .list-row.clickable {
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -929,5 +972,72 @@ select.input:focus {
   }
   .modal {
     max-height: 92vh;
+  }
+
+  /* Rows stack instead of overflowing. Actions take a full line of their own
+     so every button stays reachable. */
+  .list-row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 14px 16px;
+  }
+  .row-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+  .row-stats {
+    flex: 1 1 100%;
+  }
+  /* Cards laid out as rows (Serviços) need the same. */
+  .row-card {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+  .row-card > * {
+    min-width: 0;
+  }
+  /* Section headers put their "+ Produto"/"+ Serviço" button beside a title
+     and a hint; on a phone that squeezes the hint to one word per line. */
+  .section-head {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  /* Seven day cells sharing a line with two arrows and "Hoje" leaves each day
+     about 30px wide. Giving the strip its own line buys back ~90px. */
+  .agenda-week {
+    /* min-width, not flex-basis: a 100% basis still shrinks to share the line
+       with the arrows, which is what left each day about 30px wide. */
+    min-width: 100%;
+    order: -1;
+  }
+  /* The 120px floor exists so cards line up in a multi-column grid. In one
+     column it is just dead space — six of them turned the home screen into
+     700px of scrolling for six buttons. */
+  .action-card {
+    min-height: 0;
+    padding: 16px 18px;
+    gap: 3px;
+  }
+}
+
+/* Touch targets. 24px icon buttons and 26px pills are comfortable with a
+   mouse and fiddly with a thumb, so coarse pointers get bigger ones without
+   changing the desktop density. */
+@media (pointer: coarse) {
+  .pill {
+    padding: 10px 18px;
+  }
+  .pill.sm {
+    padding: 9px 14px;
+    font-size: 12.5px;
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+  .tab {
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 }

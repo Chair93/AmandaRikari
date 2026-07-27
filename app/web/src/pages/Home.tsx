@@ -96,8 +96,7 @@ export default function Home() {
                 <button
                   key={a.id}
                   onClick={() => navigate(alertRoute[a.kind] || '/')}
-                  className={'pill' + (a.overdue ? ' expense' : '')}
-                  style={{ justifyContent: 'flex-start', textAlign: 'left', padding: '12px 16px', width: '100%' }}
+                  className={'pill block' + (a.overdue ? ' expense' : '')}
                 >
                   {a.text}
                 </button>

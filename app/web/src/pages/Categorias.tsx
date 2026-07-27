@@ -108,14 +108,14 @@ export default function Categorias() {
                   <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{c.name}</span>
                   {c.investment && <span className="badge" style={{ background: 'var(--expense-soft)', color: 'var(--expense-text)' }}>investimento</span>}
                   {isOwner && (
-                    <>
+                    <div className="row-actions">
                       <button className="pill ghost sm" onClick={() => setModal({ open: true, editing: c })}>
                         Editar
                       </button>
                       <button className="icon-btn" aria-label="Excluir categoria" onClick={() => onDelete(c)}>
                         ×
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
@@ -129,14 +129,14 @@ export default function Categorias() {
                   <span style={{ width: 9, height: 9, borderRadius: 999, background: 'oklch(50% 0.08 150)', flex: 'none' }} />
                   <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{c.name}</span>
                   {isOwner && (
-                    <>
+                    <div className="row-actions">
                       <button className="pill ghost sm" onClick={() => setModal({ open: true, editing: c })}>
                         Editar
                       </button>
                       <button className="icon-btn" aria-label="Excluir categoria" onClick={() => onDelete(c)}>
                         ×
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}

@@ -147,7 +147,12 @@ export default function Clientes() {
                     return (
                       <div key={c.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                          <button style={{ all: 'unset', cursor: 'pointer', fontFamily: 'Newsreader, serif', fontSize: 18, fontWeight: 600 }} onClick={() => setDetailId(c.id)}>
+                          {/* padding, not just text height — as a bare line of
+                              text this was a 21px tap target on a phone. */}
+                          <button
+                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'Newsreader, serif', fontSize: 18, fontWeight: 600, padding: '6px 0', minHeight: 32, flex: 1, minWidth: 0 }}
+                            onClick={() => setDetailId(c.id)}
+                          >
                             {c.name}
                           </button>
                           {isOwner && (

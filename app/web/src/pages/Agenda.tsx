@@ -66,11 +66,13 @@ export default function Agenda() {
       <PageHeader title="Agenda" subtitle="Calendário de atendimentos, horários disponíveis e lembretes" />
       <div className="scroll-area">
         <div className="page wide">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Wraps so "Hoje" drops to its own line on a phone instead of being
+              pushed off the right edge by the seven day cells. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', rowGap: 8 }}>
             <button className="icon-btn" aria-label="Semana anterior" onClick={() => setSelectedDate((d) => addDays(d, -7))}>
               <IconChevronLeft />
             </button>
-            <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            <div className="agenda-week">
               {weekDays.map((d) => {
                 const count = countByDate.get(d) || 0;
                 const isSelected = d === selectedDate;

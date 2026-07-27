@@ -48,7 +48,7 @@ function EstoqueRow({ p }: { p: Product }) {
   const margemUnit = p.salePrice - custo;
 
   return (
-    <div className="list-row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
+    <div className="list-row">
       <div style={{ flex: '1 1 160px', minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
@@ -56,33 +56,33 @@ function EstoqueRow({ p }: { p: Product }) {
           {p.salePrice > 0 ? ` · venda ${fmtBRL(p.salePrice)}` : ''}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 'none' }}>
+      <div className="row-stats">
         {p.stock <= 1 && <span className="badge warning">estoque baixo</span>}
         <ExpiryBadge expiresAt={p.expiresAt} />
-        <span style={{ fontSize: 14, fontWeight: 700, textAlign: 'right' }}>{p.stock} un</span>
-        <span style={{ fontSize: 12.5, color: 'var(--text-muted)', textAlign: 'right' }}>{fmtBRL(valor)}</span>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>{p.stock} un</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{fmtBRL(valor)}</span>
         {p.salePrice > 0 && (
-          <span style={{ fontSize: 12.5, fontWeight: 600, textAlign: 'right', color: moneyColor(margemUnit) }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: moneyColor(margemUnit) }}>
             {fmtBRL(margemUnit)} ({Math.round((margemUnit / p.salePrice) * 100)}%)
           </span>
         )}
-        {isOwner && (
-          <>
-            <button className="pill sm" onClick={() => setPrompt('entrada')}>
-              + Entrada
-            </button>
-            <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
-              Vender
-            </button>
-            <button className="pill ghost sm" onClick={() => setEditing(true)}>
-              editar
-            </button>
-            <button className="icon-btn" aria-label={`Excluir ${p.name}`} onClick={() => setConfirmDelete(true)}>
-              ×
-            </button>
-          </>
-        )}
       </div>
+      {isOwner && (
+        <div className="row-actions">
+          <button className="pill sm" onClick={() => setPrompt('entrada')}>
+            + Entrada
+          </button>
+          <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
+            Vender
+          </button>
+          <button className="pill ghost sm" onClick={() => setEditing(true)}>
+            editar
+          </button>
+          <button className="icon-btn" aria-label={`Excluir ${p.name}`} onClick={() => setConfirmDelete(true)}>
+            ×
+          </button>
+        </div>
+      )}
       {editing && <ProductModal onClose={() => setEditing(false)} editingProduct={p} />}
 
       {confirmDelete && (
@@ -160,8 +160,10 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const perUse = eq.usefulUses > 0 ? eq.cost / eq.usefulUses : 0;
 
   return (
-    <div className="list-row" style={{ alignItems: 'flex-start' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <div className="list-row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 10 }}>
+      {/* 1 1 240px, not flex:1 — with minWidth 0 the actions squeezed this
+          column to nothing and the description broke one word per line. */}
+      <div style={{ flex: '1 1 240px', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>{eq.name}</span>
           <span className="badge" style={isMaq ? { background: 'var(--accent-soft)', color: 'var(--accent-text)' } : { background: 'var(--income-soft)', color: 'var(--income-text)' }}>
@@ -185,7 +187,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
         {eq.baixas > 0 && <div style={{ fontSize: 11, color: 'var(--expense-text)', marginTop: 3 }}>{eq.baixas} unidade(s) baixada(s)</div>}
       </div>
       {isOwner && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
+        <div className="row-actions">
           <button className="pill sm" style={{ color: 'var(--income-text)', background: 'var(--income-soft)' }} onClick={() => setPrompt('compra')}>
             + Compra
           </button>
@@ -308,7 +310,7 @@ export default function Estoque() {
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div>
                 <div className="section-title" style={{ marginBottom: 0 }}>
                   Estoque operacional
@@ -340,7 +342,7 @@ export default function Estoque() {
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div>
                 <div className="section-title" style={{ marginBottom: 0 }}>
                   Descartáveis
@@ -365,7 +367,7 @@ export default function Estoque() {
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div>
                 <div className="section-title" style={{ marginBottom: 0 }}>
                   Ativos (equipamentos)

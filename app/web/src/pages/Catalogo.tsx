@@ -14,8 +14,8 @@ function ServiceRow({ sv }: { sv: Service }) {
   const margin = sv.price - sv.cost;
   const marginPct = sv.price > 0 ? (margin / sv.price) * 100 : 0;
   return (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <div>
+    <div className="card row-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', rowGap: 12 }}>
+      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>{sv.name}</span>
           {sv.category && <span className="badge">{sv.category}</span>}
@@ -24,35 +24,35 @@ function ServiceRow({ sv }: { sv: Service }) {
           {sv.items.length} {sv.items.length === 1 ? 'item na ficha técnica' : 'itens na ficha técnica'}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        <div style={{ textAlign: 'right' }}>
+      <div className="row-stats" style={{ gap: 18 }}>
+        <div>
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Custo variável</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(sv.cost)}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div>
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Preço sugerido</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(sv.price)}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
+        <div>
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Margem</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: moneyColor(margin) }}>
             {fmtBRL(margin)} ({Math.round(marginPct)}%)
           </div>
         </div>
-        {isOwner && (
-          <>
-            <button className="pill ghost sm" onClick={() => duplicate.mutate(sv.id)} disabled={duplicate.isPending}>
-              Duplicar
-            </button>
-            <button className="pill ghost sm" onClick={() => setEditing(true)}>
-              Editar
-            </button>
-            <button className="icon-btn" aria-label="Excluir serviço" onClick={() => del.mutate(sv.id)}>
-              ×
-            </button>
-          </>
-        )}
       </div>
+      {isOwner && (
+        <div className="row-actions">
+          <button className="pill ghost sm" onClick={() => duplicate.mutate(sv.id)} disabled={duplicate.isPending}>
+            Duplicar
+          </button>
+          <button className="pill ghost sm" onClick={() => setEditing(true)}>
+            Editar
+          </button>
+          <button className="icon-btn" aria-label="Excluir serviço" onClick={() => del.mutate(sv.id)}>
+            ×
+          </button>
+        </div>
+      )}
       {editing && <ServiceModal onClose={() => setEditing(false)} editingService={sv} />}
     </div>
   );
@@ -186,7 +186,7 @@ export default function Catalogo() {
           <PriceSimulator />
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div>
                 <div className="section-title" style={{ marginBottom: 0 }}>
                   Serviços (ficha técnica)
