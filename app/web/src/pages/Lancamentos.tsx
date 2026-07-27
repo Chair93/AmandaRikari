@@ -34,7 +34,17 @@ export default function Lancamentos() {
 
   return (
     <>
-      <PageHeader title="Lançamentos" subtitle="Todos os seus atendimentos e gastos" />
+      <PageHeader
+        title="Lançamentos"
+        subtitle="Todos os seus atendimentos e gastos"
+        right={
+          isOwner ? (
+            <button className="btn-primary header-action" onClick={() => setTxModal({ open: true })}>
+              + Lançamento
+            </button>
+          ) : undefined
+        }
+      />
       <div className="scroll-area">
         <div className="page narrow">
           <div style={{ display: 'flex', gap: 8 }}>

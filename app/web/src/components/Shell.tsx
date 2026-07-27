@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   IconHome,
   IconList,
@@ -44,12 +44,30 @@ const NAV = [
   },
 ];
 
+const COLLAPSE_KEY = 'rikari.navCollapsed';
+
 export default function Shell({ children }: { children: ReactNode }) {
+  // Desktop only — the phone nav is a bottom tab strip and ignores this.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* private mode — the choice just doesn't persist */
+    }
+  }, [collapsed]);
+
   return (
-    <div className="app-shell">
+    <div className={'app-shell' + (collapsed ? ' nav-collapsed' : '')}>
       <nav className="app-nav">
         <div className="nav-brand">
-          <img src="/ar-mark-t.png" alt="AR" style={{ width: '100%', height: 'auto' }} />
+          <img src="/ar-mark-t.png" alt="AR" />
         </div>
         {NAV.map((group) => (
           <div key={group.section} style={{ display: 'contents' }}>
@@ -63,9 +81,22 @@ export default function Shell({ children }: { children: ReactNode }) {
             ))}
           </div>
         ))}
-        <div style={{ flex: 1 }} />
-        <ThemeToggle />
       </nav>
+      <button
+        className="nav-collapse"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {/* Deliberately a sibling of the nav, not a child. The mobile nav sets
+          backdrop-filter, which makes it the containing block for any fixed
+          descendant — the toggle ended up pinned inside the tab bar instead
+          of the top of the screen. */}
+      <ThemeToggle />
       <main className="app-main">{children}</main>
     </div>
   );

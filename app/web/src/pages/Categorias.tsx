@@ -96,7 +96,17 @@ export default function Categorias() {
 
   return (
     <>
-      <PageHeader title="Categorias" subtitle="Organize seus tipos de gasto e receita" />
+      <PageHeader
+        title="Categorias"
+        subtitle="Organize seus tipos de gasto e receita"
+        right={
+          isOwner ? (
+            <button className="btn-primary header-action" onClick={() => setModal({ open: true })}>
+              + Categoria
+            </button>
+          ) : undefined
+        }
+      />
       <div className="scroll-area">
         <div className="page narrow">
           <div>

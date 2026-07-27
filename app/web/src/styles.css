@@ -322,20 +322,26 @@ a {
   padding: 6px 36px 120px;
 }
 
+/* Content width scales with the window instead of sitting in a fixed column.
+   The cap keeps prose and forms readable; dense screens opt into more via
+   .page.wide. Measured before this: 424px of the pane unused at 1440, 904px
+   at 1920, while the page still scrolled. */
 .page {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 920px;
+  max-width: min(1280px, 100%);
   width: 100%;
   margin: 0 auto;
   padding-bottom: 8px;
 }
+/* Forms and reading-width screens stay narrow on purpose — a 1280px line of
+   text is worse, not better. */
 .page.narrow {
-  max-width: 760px;
+  max-width: min(860px, 100%);
 }
 .page.wide {
-  max-width: 980px;
+  max-width: min(1480px, 100%);
 }
 
 /* ---------- Buttons ---------- */
@@ -1050,13 +1056,22 @@ select.input:focus {
 .nav-brand {
   width: 54px;
   height: 44px;
+  overflow: hidden;
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
 }
+.nav-brand img {
+  width: 54px;
+  height: auto;
+  display: block;
+}
 
+/* Pinned rather than laid out: it lives outside the nav so the mobile nav's
+   backdrop-filter can't capture it as a containing block. Position comes
+   after `all: unset`, which would otherwise wipe it. */
 .theme-toggle {
   all: unset;
   cursor: pointer;
@@ -1069,6 +1084,23 @@ select.input:focus {
   color: var(--idle-color);
   background: var(--surface-2);
   flex: none;
+  position: fixed;
+  left: 28px;
+  bottom: 28px;
+  z-index: 25;
+}
+
+/* The header action and the floating + are the same command; exactly one is
+   shown at a time, so the phone keeps its thumb-reachable button and the
+   desktop gets the action beside the title. */
+.header-action {
+  display: none;
+}
+
+/* Collapsing the sidebar is a desktop affordance; the phone nav is a bottom
+   tab strip with nothing to collapse. */
+.nav-collapse {
+  display: none;
 }
 
 /* The icon tile and chevron are iOS affordances: the markup is always there,
@@ -1406,10 +1438,11 @@ select.input:focus {
   }
   /* Dark mode is the one setting worth reaching without scrolling the tab
      strip, so it floats where iOS puts a header action. */
-  .app-nav .theme-toggle {
-    position: fixed;
+  .theme-toggle {
     top: calc(8px + env(safe-area-inset-top));
     right: 14px;
+    left: auto;
+    bottom: auto;
     z-index: 30;
     width: 36px;
     height: 36px;
@@ -1437,5 +1470,164 @@ select.input:focus {
   textarea.input {
     border-radius: 10px;
     font-size: 16px; /* under 16px iOS Safari zooms the page on focus */
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DESKTOP — the pane is wide, so use it.
+
+   Everything here is above the phone breakpoint. Measured before: a fixed
+   760–980px column left 424px unused at 1440 and 904px at 1920, while the
+   Caixa still scrolled 342px.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (min-width: 781px) {
+  /* Caixa: summary and what needs attention on the left, the breakdown and
+     recent entries on the right. Below 1280 there isn't room for two real
+     columns, so it stays stacked. */
+  .dash-split {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 1280px) {
+    .dash-split {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+      column-gap: 28px;
+    }
+    /* Columns assigned by name, not by position — sections here render
+       conditionally, and nth-child would reshuffle them when one is absent. */
+    .dash-a {
+      grid-column: 1;
+    }
+    .dash-b {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+    }
+  }
+
+  /* The title and its controls stay put while a long list scrolls under. */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background: var(--bg);
+    border-bottom: 1px solid transparent;
+  }
+  .app-header.stuck {
+    border-bottom-color: var(--border);
+  }
+
+  /* Reaching for a round button in the far corner is a thumb pattern; on a
+     desktop the action belongs beside the title the eye is already on. */
+  .fab {
+    display: none;
+  }
+  .header-action {
+    display: inline-block;
+    padding: 10px 18px;
+  }
+
+  /* ── Sidebar: label beside the icon ───────────────────────────────
+     A word read left-to-right beside its icon is quicker than one set at
+     9.5px underneath it. Collapses back to icons for anyone who wants the
+     width — the choice is remembered. */
+  .app-nav {
+    width: 208px;
+    align-items: stretch;
+    padding: 22px 12px 84px;
+    gap: 2px;
+    transition: width 0.16s ease;
+  }
+  .nav-collapsed .app-nav {
+    width: 96px;
+    align-items: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .nav-brand {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 10px;
+    margin-bottom: 14px;
+  }
+  .nav-brand img {
+    width: 54px;
+    height: auto;
+    display: block;
+  }
+  .nav-collapsed .nav-brand {
+    justify-content: center;
+    padding-left: 0;
+  }
+  .nav-section-label {
+    align-self: flex-start;
+    padding-left: 12px;
+    margin: 14px 0 4px;
+    font-size: 9.5px;
+  }
+  .nav-collapsed .nav-section-label {
+    align-self: center;
+    padding-left: 0;
+  }
+  .nav-btn {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+  }
+  .nav-btn span.label {
+    font-size: 13.5px;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .nav-collapsed .nav-btn {
+    flex-direction: column;
+    gap: 5px;
+    width: 76px;
+    padding: 9px 4px;
+    border-radius: 14px;
+  }
+  .nav-collapsed .nav-btn span.label {
+    font-size: 9.5px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .nav-btn .nav-bar {
+    left: -12px;
+  }
+
+  .nav-collapse {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    position: fixed;
+    left: 80px;
+    bottom: 28px;
+    z-index: 26;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--idle-color);
+    background: var(--surface-2);
+    transition: transform 0.16s ease, left 0.16s ease;
+  }
+  .nav-collapsed .nav-collapse {
+    left: 28px;
+    bottom: 76px;
+    transform: rotate(180deg);
+  }
+  .nav-collapse:hover {
+    color: var(--active-color);
+  }
+  .nav-collapse:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 }

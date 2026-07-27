@@ -49,6 +49,11 @@ export default function Dashboard() {
             <button className="pill" onClick={() => setShowMargin((v) => !v)}>
               {showMargin ? 'Margem visível' : 'Margem oculta'}
             </button>
+            {isOwner && (
+              <button className="btn-primary header-action" onClick={() => setTxModal({ open: true })}>
+                + Lançamento
+              </button>
+            )}
           </div>
         }
       />
@@ -127,8 +132,9 @@ export default function Dashboard() {
               )}
             </div>
 
+            <div className="dash-split">
             {data.alerts.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="dash-a" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="section-title">Precisa de atenção</div>
                 {data.alerts.map((a) => (
                   <button key={a.id} className={'pill block' + (a.overdue ? ' expense' : '')} onClick={() => navigate(a.kind === 'bill' ? '/contas' : a.kind === 'stock' ? '/estoque' : '/clientes')}>
@@ -139,7 +145,7 @@ export default function Dashboard() {
             )}
 
             {showMargin && data.sociosList.length > 0 && (
-              <div>
+              <div className="dash-a">
                 <div className="section-title">Sócios (acumulado)</div>
                 <div className="section-hint" style={{ marginBottom: 10 }}>
                   Aportes recebidos e pagamentos feitos — fora do resultado operacional.
@@ -157,7 +163,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div>
+            <div className="dash-a">
               <div className="section-title" style={{ marginBottom: 12 }}>
                 Despesas por categoria
               </div>
@@ -183,7 +189,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div>
+            <div className="dash-b">
               <div className="section-title" style={{ marginBottom: 12 }}>
                 Últimos lançamentos
               </div>
@@ -222,6 +228,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
         )}

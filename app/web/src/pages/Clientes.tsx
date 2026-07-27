@@ -47,7 +47,17 @@ export default function Clientes() {
 
   return (
     <>
-      <PageHeader title="Clientes" subtitle="Clientes cadastrados e seus totais" />
+      <PageHeader
+        title="Clientes"
+        subtitle="Clientes cadastrados e seus totais"
+        right={
+          isOwner ? (
+            <button className="btn-primary header-action" onClick={() => setClientModal({ open: true })}>
+              + Cliente
+            </button>
+          ) : undefined
+        }
+      />
       <div className="scroll-area">
         <div className="page wide">
           {data.inativosList.length > 0 && (
@@ -141,7 +151,7 @@ export default function Clientes() {
 
               <div>
                 <div className="section-title">Todos os clientes</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(268px, 1fr))', gap: 14 }}>
                   {data.clientsList.map((c) => {
                     const status = statusFor(c);
                     return (
@@ -150,7 +160,7 @@ export default function Clientes() {
                           {/* padding, not just text height — as a bare line of
                               text this was a 21px tap target on a phone. */}
                           <button
-                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'Newsreader, serif', fontSize: 18, fontWeight: 600, padding: '6px 0', minHeight: 32, flex: 1, minWidth: 0 }}
+                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'Newsreader, serif', fontSize: 17, fontWeight: 600, padding: '6px 0', minHeight: 32, flex: 1, minWidth: 0, lineHeight: 1.2, textWrap: 'balance' }}
                             onClick={() => setDetailId(c.id)}
                           >
                             {c.name}
