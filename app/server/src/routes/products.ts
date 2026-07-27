@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
+import { deleteProductCascade, productDeleteImpact } from '../stockDeletion.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -66,10 +67,17 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   res.json(row);
 });
 
+/** What a delete would take with it — the UI shows this before confirming. */
+router.get('/:id/delete-impact', async (req: AuthedRequest, res) => {
+  const existing = await prisma.product.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  res.json(await productDeleteImpact(req.businessId!, existing.id));
+});
+
 router.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.product.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
-  await prisma.product.delete({ where: { id: existing.id } });
+  await deleteProductCascade(req.businessId!, existing.id);
   res.status(204).end();
 });
 
@@ -101,6 +109,7 @@ router.post('/:id/entrada', async (req: AuthedRequest, res) => {
           categoryId: cat.id,
           date: new Date().toISOString().slice(0, 10),
           estoque: true,
+          productId: p.id,
           note: `Compra de estoque: ${p.name} x${qty}`,
         },
       });

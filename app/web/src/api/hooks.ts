@@ -11,6 +11,7 @@ import type {
   DashboardData,
   DashboardYearData,
   DayAgenda,
+  DeleteImpact,
   Equipment,
   HomeData,
   PackageRow,
@@ -83,6 +84,15 @@ export function useDeleteProduct() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.del(`/products/${id}`), onSuccess: invalidate });
 }
+/** Fetched only once the confirm dialog opens — it is a per-row query and
+ *  would otherwise run for every product on the page. */
+export function useProductDeleteImpact(id: string | null) {
+  return useQuery({
+    queryKey: ['product-delete-impact', id],
+    queryFn: () => api.get<DeleteImpact>(`/products/${id}/delete-impact`),
+    enabled: !!id,
+  });
+}
 export function useProductEntrada() {
   const invalidate = useInvalidateAll();
   return useMutation({
@@ -113,6 +123,13 @@ export function useSaveEquipment() {
 export function useDeleteEquipment() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.del(`/equipment/${id}`), onSuccess: invalidate });
+}
+export function useEquipmentDeleteImpact(id: string | null) {
+  return useQuery({
+    queryKey: ['equipment-delete-impact', id],
+    queryFn: () => api.get<DeleteImpact>(`/equipment/${id}/delete-impact`),
+    enabled: !!id,
+  });
 }
 export function useEquipmentComprar() {
   const invalidate = useInvalidateAll();

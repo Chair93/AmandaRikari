@@ -64,6 +64,15 @@ export interface Equipment {
   depreciacaoAcumulada?: number;
 }
 
+/** What deleting a product or asset would take with it. Appointments and
+ *  services are listed because they change, not because they are deleted. */
+export interface DeleteImpact {
+  vendas: { count: number; total: number };
+  compras: { count: number; total: number };
+  atendimentos: { count: number };
+  servicos: { count: number; names: string[] };
+}
+
 export interface ServiceItem {
   id: string;
   kind: ItemKind;

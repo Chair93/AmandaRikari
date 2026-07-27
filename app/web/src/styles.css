@@ -430,6 +430,31 @@ a {
   color: var(--expense-text);
 }
 
+/* Solid destructive action — the confirm button on a delete dialog, where the
+   consequence warrants more weight than btn-danger-text. */
+.btn-danger {
+  all: unset;
+  cursor: pointer;
+  padding: 11px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--expense);
+  color: white;
+  text-align: center;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.btn-danger:hover {
+  filter: brightness(0.92);
+}
+.btn-danger:active {
+  transform: scale(0.97);
+}
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .icon-btn {
   all: unset;
   cursor: pointer;

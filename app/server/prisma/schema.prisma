@@ -119,6 +119,8 @@ model Product {
   serviceItems     ServiceItem[]
   transactionItems TransactionItem[]
   sales            TransactionSale[]
+  /// Stock purchases ("+ Entrada") booked for this product.
+  purchases        Transaction[]
 
   @@index([businessId])
 }
@@ -139,6 +141,8 @@ model Equipment {
 
   serviceItems     ServiceItem[]
   transactionItems TransactionItem[]
+  /// Asset purchases ("+ Compra") booked for this equipment.
+  purchases        Transaction[]
 
   @@index([businessId])
 }
@@ -201,6 +205,14 @@ model Transaction {
   prolabore Boolean @default(false)
   estoque   Boolean @default(false) // compra de estoque (investimento)
   ativo     Boolean @default(false) // compra de bem (investimento)
+
+  // Set on the purchase entries created by "+ Entrada" / "+ Compra" so deleting
+  // the product or asset can find its own purchases exactly. Matching on the
+  // note text used to be the only option and broke as soon as it was renamed.
+  productId   String?
+  product     Product?   @relation(fields: [productId], references: [id])
+  equipmentId String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id])
 
   // Deferred revenue for prepaid packages: the sale (or installment payoff)
   // moves cash but hasn't been earned yet (cashOnly); using up a session

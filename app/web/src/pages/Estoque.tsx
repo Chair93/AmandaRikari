@@ -1,12 +1,24 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useDeleteEquipment, useEquipment, useEquipmentBaixa, useEquipmentComprar, useProductEntrada, useProducts, useProductVender } from '../api/hooks';
+import {
+  useDeleteEquipment,
+  useDeleteProduct,
+  useEquipment,
+  useEquipmentBaixa,
+  useEquipmentComprar,
+  useEquipmentDeleteImpact,
+  useProductDeleteImpact,
+  useProductEntrada,
+  useProducts,
+  useProductVender,
+} from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, fmtDateBR, moneyColor, UNIT_LABEL } from '../format';
 import type { Equipment, Product } from '../api/types';
 import ProductModal from '../components/ProductModal';
 import EquipmentModal from '../components/EquipmentModal';
 import PromptModal from '../components/PromptModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 function daysUntil(iso: string): number {
   const DAY = 86400000;
@@ -26,7 +38,10 @@ function EstoqueRow({ p }: { p: Product }) {
   const { isOwner } = useAuth();
   const entrada = useProductEntrada();
   const vender = useProductVender();
+  const del = useDeleteProduct();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { data: impact, isPending: impactPending } = useProductDeleteImpact(confirmDelete ? p.id : null);
   const [prompt, setPrompt] = useState<'entrada' | 'venda' | null>(null);
   const custo = p.avgCost || p.packageCost;
   const valor = p.stock * p.packageCost;
@@ -62,10 +77,27 @@ function EstoqueRow({ p }: { p: Product }) {
             <button className="pill ghost sm" onClick={() => setEditing(true)}>
               editar
             </button>
+            <button className="icon-btn" aria-label={`Excluir ${p.name}`} onClick={() => setConfirmDelete(true)}>
+              ×
+            </button>
           </>
         )}
       </div>
       {editing && <ProductModal onClose={() => setEditing(false)} editingProduct={p} />}
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          name={p.name}
+          what="produto"
+          impact={impact}
+          loading={impactPending}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={async () => {
+            await del.mutateAsync(p.id);
+            setConfirmDelete(false);
+          }}
+        />
+      )}
 
       {prompt === 'entrada' && (
         <PromptModal
@@ -114,6 +146,8 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const baixa = useEquipmentBaixa();
   const del = useDeleteEquipment();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { data: impact, isPending: impactPending } = useEquipmentDeleteImpact(confirmDelete ? eq.id : null);
   const [prompt, setPrompt] = useState<'compra' | 'baixa' | null>(null);
   const isMaq = (eq.kind || (eq.kwh > 0 ? 'maquina' : 'utensilio')) === 'maquina';
   const q = eq.qty || 1;
@@ -163,12 +197,26 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             Editar
           </button>
-          <button className="icon-btn" aria-label={`Excluir ${eq.name}`} onClick={() => del.mutate(eq.id)}>
+          <button className="icon-btn" aria-label={`Excluir ${eq.name}`} onClick={() => setConfirmDelete(true)}>
             ×
           </button>
         </div>
       )}
       {editing && <EquipmentModal onClose={() => setEditing(false)} editingEquipment={eq} />}
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          name={eq.name}
+          what="bem"
+          impact={impact}
+          loading={impactPending}
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={async () => {
+            await del.mutateAsync(eq.id);
+            setConfirmDelete(false);
+          }}
+        />
+      )}
 
       {prompt === 'compra' && (
         <PromptModal

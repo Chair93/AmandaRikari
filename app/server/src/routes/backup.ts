@@ -146,6 +146,11 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           prolabore: !!t.prolabore,
           estoque: !!t.estoque,
           ativo: !!t.ativo,
+          // Purchase entries point back at what they bought; without remapping
+          // these a restored backup loses the link and the product's own
+          // purchases would survive its deletion as orphan expenses.
+          productId: t.productId ? prodIdMap.get(t.productId) || null : null,
+          equipmentId: t.equipmentId ? eqIdMap.get(t.equipmentId) || null : null,
           cashOnly: !!t.cashOnly,
           accrualOnly: !!t.accrualOnly,
           packageId: t.packageId ? pkgIdMap.get(t.packageId) || null : null,
