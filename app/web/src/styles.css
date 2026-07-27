@@ -1090,6 +1090,43 @@ select.input:focus {
   z-index: 25;
 }
 
+/* Transaction rows. On a phone they stay stacked — date, client and payment
+   fold under the description — and become real columns on desktop, where the
+   whole point is comparing figures down a column. */
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* After .tx-row, not before: the heading row carries both classes, and at
+   equal specificity the later rule wins — it was showing up on phones. */
+.tx-row .tx-date,
+.tx-row .tx-pay,
+.tx-row .tx-margin,
+.tx-head {
+  display: none;
+}
+.tx-row .tx-desc {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-row .tx-who {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tx-row .tx-amount {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The header action and the floating + are the same command; exactly one is
    shown at a time, so the phone keeps its thumb-reachable button and the
    desktop gets the action beside the title. */
@@ -1526,6 +1563,58 @@ select.input:focus {
   .header-action {
     display: inline-block;
     padding: 10px 18px;
+  }
+
+  /* ── Money lists become tables ────────────────────────────────────
+     Before this the label sat at the far left and the value at the far
+     right of a ~1200px row, so pairing them meant crossing the screen.
+     Aligned columns and tabular figures let the eye run straight down. */
+  .tx-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 2.2fr) minmax(0, 1.4fr) 110px 130px 110px 32px;
+    align-items: center;
+    gap: 14px;
+  }
+  .tx-row .tx-date,
+  .tx-row .tx-pay,
+  .tx-row .tx-margin {
+    display: block;
+  }
+  .tx-row .tx-date {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .tx-row .tx-who,
+  .tx-row .tx-pay {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tx-row .tx-amount,
+  .tx-row .tx-margin {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .tx-row .tx-margin {
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+  .tx-head {
+    display: grid;
+    padding: 8px 18px;
+    background: var(--surface-2);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tx-head .tx-amount,
+  .tx-head .tx-margin {
+    font-weight: 700;
   }
 
   /* ── Sidebar: label beside the icon ───────────────────────────────

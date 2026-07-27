@@ -2,7 +2,7 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { useDeleteTransaction, useTransactions } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtBRL, moneyColor } from '../format';
+import { fmtBRL, moneyColor, PAYMENT_LABEL } from '../format';
 import TransactionModal from '../components/TransactionModal';
 
 type Filter = 'all' | 'receita' | 'despesa';
@@ -46,7 +46,7 @@ export default function Lancamentos() {
         }
       />
       <div className="scroll-area">
-        <div className="page narrow">
+        <div className="page">
           <div style={{ display: 'flex', gap: 8 }}>
             <button className={'pill' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>
               Todos
@@ -67,30 +67,39 @@ export default function Lancamentos() {
                     {new Date(g.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
                   </div>
                   <div className="list">
+                    <div className="tx-row tx-head" aria-hidden="true">
+                      <span>Data</span>
+                      <span>Descrição</span>
+                      <span>Cliente</span>
+                      <span>Pagamento</span>
+                      <span className="tx-amount">Valor</span>
+                      <span className="tx-margin">Margem</span>
+                      <span />
+                    </div>
                     {g.items.map((tx) => {
                       const clientName = tx.capital ? tx.socio : tx.client?.name;
                       const categoryName = tx.service?.name || tx.category?.name || 'Categoria removida';
                       const hasMargem = tx.type === 'receita' && tx.variableCost != null;
                       const margem = hasMargem ? tx.amount - (tx.variableCost || 0) : 0;
                       return (
-                        <div key={tx.id} className="list-row clickable" onClick={() => setTxModal({ open: true, id: tx.id })}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 500 }}>{categoryName}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{clientName || '—'}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: moneyColor(tx.type === 'despesa' ? -1 : 1) }}>
-                                {(tx.type === 'despesa' ? '- ' : '+ ') + fmtBRL(tx.amount)}
-                              </div>
-                              {hasMargem && <div style={{ fontSize: 11, color: moneyColor(margem) }}>margem {fmtBRL(margem)}</div>}
-                            </div>
-                            {isOwner && (
-                              <button className="icon-btn" aria-label="Excluir lançamento" onClick={(e) => onDelete(tx.id, e)}>
-                                ×
-                              </button>
-                            )}
-                          </div>
+                        <div key={tx.id} className="list-row clickable tx-row" onClick={() => setTxModal({ open: true, id: tx.id })}>
+                          <span className="tx-date">{new Date(tx.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                          <span className="tx-desc">{categoryName}</span>
+                          <span className="tx-who">{clientName || '—'}</span>
+                          <span className="tx-pay">{tx.payment ? PAYMENT_LABEL[tx.payment] || tx.payment : ''}</span>
+                          <span className="tx-amount" style={{ color: moneyColor(tx.type === 'despesa' ? -1 : 1) }}>
+                            {(tx.type === 'despesa' ? '- ' : '+ ') + fmtBRL(tx.amount)}
+                          </span>
+                          <span className="tx-margin" style={{ color: hasMargem ? moneyColor(margem) : undefined }}>
+                            {hasMargem ? fmtBRL(margem) : ''}
+                          </span>
+                          {isOwner ? (
+                            <button className="icon-btn" aria-label="Excluir lançamento" onClick={(e) => onDelete(tx.id, e)}>
+                              ×
+                            </button>
+                          ) : (
+                            <span />
+                          )}
                         </div>
                       );
                     })}
