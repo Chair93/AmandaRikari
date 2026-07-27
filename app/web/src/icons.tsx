@@ -134,10 +134,3 @@ export function IconChevronRight({ size = 14, color = 'currentColor' }: IconProp
     </svg>
   );
 }
-export function IconPlus({ size = 22, color = 'white' }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 22 22">
-      <path d="M11 2v18M2 11h18" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
-    </svg>
-  );
-}
