@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { feePctFor, computeServiceCost, packageSessionAmount } from '../calc.js';
+import { assertOwned } from '../ownership.js';
 import { todayStr, addMonthsToDate, round2 } from '../util.js';
 
 const router = Router();
@@ -33,6 +34,7 @@ router.post('/', async (req: AuthedRequest, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const d = parsed.data;
+  await assertOwned(req.businessId!, { clientIds: [d.clientId], serviceIds: [d.serviceId] });
   const sv = d.serviceId ? await prisma.service.findFirst({ where: { id: d.serviceId, businessId: req.businessId } }) : null;
 
   if (d.mode === 'prazo') {

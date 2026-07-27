@@ -17,6 +17,8 @@ model User {
   passwordHash String
   name         String
   createdAt    DateTime @default(now())
+  /// Bumped on password change/reset so tokens issued before it stop working.
+  tokenVersion Int      @default(0)
 
   memberships          Membership[]
   passwordResetTokens  PasswordResetToken[]
@@ -285,12 +287,16 @@ model Bill {
   settledAt  String?
   txId       String?
   recId      String?
+  /// 'YYYY-MM' this recurring bill was generated for. Unique together with
+  /// recId so two concurrent requests can't both create the same month's bill.
+  recMonth   String?
   // Set when this bill is an installment of a package sold "a prazo" — lets
   // settlement flag the resulting transaction cashOnly (paying an
   // installment moves cash but doesn't itself earn revenue).
   packageId  String?
   package    Package?  @relation(fields: [packageId], references: [id])
 
+  @@unique([recId, recMonth])
   @@index([businessId])
 }
 

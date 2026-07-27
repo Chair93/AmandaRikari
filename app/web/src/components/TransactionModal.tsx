@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { useCategories, useClients, useDeleteTransaction, useEquipment, useProducts, useSaveTransaction, useServices, useSettings, useTransaction } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
 import type { PaymentMethod, Transaction } from '../api/types';
-import { fmtBRL, numOr0, PAYMENT_LABEL, todayStr, UNIT_LABEL } from '../format';
+import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr, UNIT_LABEL } from '../format';
 import { computeServiceCostPreview, feePctForPreview } from '../calcPreview';
 
 type Mode = 'despesa' | 'receita' | 'socio';
@@ -170,22 +170,29 @@ function TransactionForm({
 
   async function onSave() {
     setError(null);
+    // Parse once and reject bad input explicitly — silently coercing a typo to
+    // 0 (or to a truncated amount) would write a wrong number into the ledger.
+    const parsedAmount = parseNumberBR(amount);
+    if (parsedAmount == null || parsedAmount <= 0) {
+      setError(amount.trim() === '' ? 'Preencha o valor.' : `Valor inválido: "${amount}". Use apenas números, ex: 1.500,00`);
+      return;
+    }
     try {
       if (mode === 'socio') {
-        if (!numOr0(amount) || !socio.trim()) {
-          setError('Preencha o sócio e o valor.');
+        if (!socio.trim()) {
+          setError('Preencha o nome do sócio.');
           return;
         }
-        await saveTx.mutateAsync({ id: editingTx?.id, type: 'receita', amount: numOr0(amount), date, note, capital, capitalKind, socio: socio.trim() });
+        await saveTx.mutateAsync({ id: editingTx?.id, type: 'receita', amount: parsedAmount, date, note, capital, capitalKind, socio: socio.trim() });
       } else {
-        if (!numOr0(amount) || !categoryId) {
-          setError('Preencha o valor e a categoria.');
+        if (!categoryId) {
+          setError('Escolha a categoria.');
           return;
         }
         await saveTx.mutateAsync({
           id: editingTx?.id,
           type: mode,
-          amount: numOr0(amount),
+          amount: parsedAmount,
           categoryId,
           clientId: clientId || null,
           serviceId: mode === 'receita' ? serviceId || null : null,
@@ -246,6 +253,10 @@ function TransactionForm({
           <label className="field">
             Sócio
             <input className="input" placeholder="Nome do sócio" value={socio} onChange={(e) => setSocio(e.target.value)} />
+          </label>
+          <label className="field">
+            Valor
+            <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
           <div className="field">
             O dinheiro será devolvido?
@@ -329,7 +340,7 @@ function TransactionForm({
                       onChange={(e) => updateItem(it.id, { qty: e.target.value })}
                     />
                     <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 'none', width: 26 }}>{itemQtyUnit(it)}</span>
-                    <button className="icon-btn" onClick={() => removeItem(it.id)}>
+                    <button className="icon-btn" aria-label="Remover item" onClick={() => removeItem(it.id)}>
                       ×
                     </button>
                   </div>
@@ -374,7 +385,7 @@ function TransactionForm({
                       </select>
                       <input className="input" style={{ width: 56, flex: 'none', padding: '8px 10px', fontSize: 12.5 }} inputMode="decimal" placeholder="qtd" value={sl.qty} onChange={(e) => updateSale(sl.id, { qty: e.target.value })} />
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 'none', width: 80 }}>{fmtBRL(total)}</span>
-                      <button className="icon-btn" onClick={() => removeSale(sl.id)}>
+                      <button className="icon-btn" aria-label="Remover produto vendido" onClick={() => removeSale(sl.id)}>
                         ×
                       </button>
                     </div>

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { computeServiceCost } from '../calc.js';
+import { assertOwned } from '../ownership.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -56,6 +57,10 @@ router.post('/', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const d = parsed.data;
+  await assertOwned(req.businessId!, {
+    productIds: d.items.filter((it) => it.kind === 'product').map((it) => it.refId),
+    equipmentIds: d.items.filter((it) => it.kind === 'equipment').map((it) => it.refId),
+  });
   const row = await prisma.service.create({
     data: { businessId: req.businessId!, name: d.name, price: d.price, category: d.category || null, items: { create: toServiceItemData(d.items) } },
     include: { items: true },
@@ -69,6 +74,10 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.service.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const d = parsed.data;
+  await assertOwned(req.businessId!, {
+    productIds: d.items.filter((it) => it.kind === 'product').map((it) => it.refId),
+    equipmentIds: d.items.filter((it) => it.kind === 'equipment').map((it) => it.refId),
+  });
   const row = await prisma.$transaction(async (tx) => {
     await tx.serviceItem.deleteMany({ where: { serviceId: existing.id } });
     return tx.service.update({

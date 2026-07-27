@@ -8,7 +8,13 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireOwnerForWrites);
 
-/** Generates this month's "conta a pagar" for each recurring bill that hasn't produced one yet. */
+/** Generates this month's "conta a pagar" for each recurring bill that hasn't
+ *  produced one yet.
+ *
+ *  This runs on GET requests, so two page loads landing together used to both
+ *  read `geradas` without the current month and both create the bill. The
+ *  `(recId, recMonth)` unique index makes the database the arbiter: the loser
+ *  of the race gets P2002 and simply moves on. */
 export async function ensureRecurringGenerated(businessId: string) {
   const mk = todayStr().slice(0, 7);
   const recs = await prisma.recurring.findMany({ where: { businessId } });
@@ -16,21 +22,27 @@ export async function ensureRecurringGenerated(businessId: string) {
     const geradas: string[] = JSON.parse(r.geradas || '[]');
     if (geradas.includes(mk)) continue;
     const dia = Math.min(28, Math.max(1, numOr0(r.dueDay) || 5));
-    await prisma.$transaction([
-      prisma.bill.create({
-        data: {
-          businessId,
-          kind: 'pagar',
-          desc: r.desc,
-          amount: r.amount,
-          due: `${mk}-${String(dia).padStart(2, '0')}`,
-          categoryId: r.categoryId,
-          note: 'Despesa fixa',
-          recId: r.id,
-        },
-      }),
-      prisma.recurring.update({ where: { id: r.id }, data: { geradas: JSON.stringify([...geradas, mk]) } }),
-    ]);
+    try {
+      await prisma.$transaction([
+        prisma.bill.create({
+          data: {
+            businessId,
+            kind: 'pagar',
+            desc: r.desc,
+            amount: r.amount,
+            due: `${mk}-${String(dia).padStart(2, '0')}`,
+            categoryId: r.categoryId,
+            note: 'Despesa fixa',
+            recId: r.id,
+            recMonth: mk,
+          },
+        }),
+        prisma.recurring.update({ where: { id: r.id }, data: { geradas: JSON.stringify([...geradas, mk]) } }),
+      ]);
+    } catch (e) {
+      // P2002 = another request already generated this month's bill.
+      if ((e as { code?: string })?.code !== 'P2002') throw e;
+    }
   }
 }
 

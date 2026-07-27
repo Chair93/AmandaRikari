@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { computeServiceCost, feePctFor } from '../calc.js';
+import { assertOwned } from '../ownership.js';
 import { round2, todayStr } from '../util.js';
 
 const router = Router();
@@ -108,6 +109,13 @@ router.post('/', async (req: AuthedRequest, res) => {
   const ctx = await loadCostCtx(businessId);
   const items = d.type === 'receita' ? d.items || [] : [];
   const sales = d.type === 'receita' ? d.sales || [] : [];
+  await assertOwned(businessId, {
+    categoryIds: [d.categoryId],
+    clientIds: [d.clientId],
+    serviceIds: [d.serviceId],
+    productIds: [...items.filter((it) => it.kind === 'product').map((it) => it.refId), ...sales.map((sl) => sl.productId)],
+    equipmentIds: items.filter((it) => it.kind === 'equipment').map((it) => it.refId),
+  });
   const distanciaKm = d.type === 'receita' ? d.distanciaKm || 0 : 0;
   const travelCost = distanciaKm * (ctx.settings.costPerKm || 0);
   const itemsCost = items.length ? computeServiceCost(items, ctx.products, ctx.equipment, ctx.settings) : 0;
@@ -181,6 +189,13 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const ctx = await loadCostCtx(businessId);
   const items = d.type === 'receita' ? d.items || [] : [];
   const sales = d.type === 'receita' ? d.sales || [] : [];
+  await assertOwned(businessId, {
+    categoryIds: [d.categoryId],
+    clientIds: [d.clientId],
+    serviceIds: [d.serviceId],
+    productIds: [...items.filter((it) => it.kind === 'product').map((it) => it.refId), ...sales.map((sl) => sl.productId)],
+    equipmentIds: items.filter((it) => it.kind === 'equipment').map((it) => it.refId),
+  });
   const distanciaKm = d.type === 'receita' ? d.distanciaKm || 0 : 0;
   const travelCost = distanciaKm * (ctx.settings.costPerKm || 0);
   const itemsCost = items.length ? computeServiceCost(items, ctx.products, ctx.equipment, ctx.settings) : 0;

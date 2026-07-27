@@ -10,7 +10,7 @@ router.use(requireOwnerForWrites);
 /** Full JSON export — same shape usable for backup and re-import. */
 router.get('/', async (req: AuthedRequest, res) => {
   const businessId = req.businessId!;
-  const [categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings] = await Promise.all([
+  const [categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments] = await Promise.all([
     prisma.category.findMany({ where: { businessId } }),
     prisma.client.findMany({ where: { businessId } }),
     prisma.product.findMany({ where: { businessId } }),
@@ -21,8 +21,9 @@ router.get('/', async (req: AuthedRequest, res) => {
     prisma.recurring.findMany({ where: { businessId } }),
     prisma.package.findMany({ where: { businessId } }),
     prisma.settings.findUnique({ where: { businessId } }),
-  ]);
-  res.json({ categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, exportedAt: new Date().toISOString() });
+    prisma.appointment.findMany({ where: { businessId } }),
+  ] as const);
+  res.json({ categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, exportedAt: new Date().toISOString() });
 });
 
 const restoreSchema = z.object({
@@ -35,6 +36,7 @@ const restoreSchema = z.object({
   bills: z.array(z.any()).optional(),
   recurring: z.array(z.any()).optional(),
   packages: z.array(z.any()).optional(),
+  appointments: z.array(z.any()).optional(),
   settings: z.any().optional(),
 });
 
@@ -49,6 +51,10 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     await tx.transactionSale.deleteMany({ where: { transaction: { businessId } } });
     await tx.transactionItem.deleteMany({ where: { transaction: { businessId } } });
     await tx.transaction.deleteMany({ where: { businessId } });
+    // Appointments point at clients/services with no cascade, so they have to
+    // go before those rows are deleted — otherwise the whole restore aborts
+    // with a foreign-key error (P2003) for anyone who has used the Agenda.
+    await tx.appointment.deleteMany({ where: { businessId } });
     await tx.serviceItem.deleteMany({ where: { service: { businessId } } });
     await tx.package.deleteMany({ where: { businessId } });
     await tx.bill.deleteMany({ where: { businessId } });
@@ -169,6 +175,22 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     for (const r of d.recurring || []) {
       await tx.recurring.create({
         data: { businessId, desc: r.desc, amount: r.amount, dueDay: r.dueDay || 5, categoryId: r.categoryId ? catIdMap.get(r.categoryId) || null : null, geradas: JSON.stringify(r.geradas || []) },
+      });
+    }
+    for (const a of d.appointments || []) {
+      const clientId = cliIdMap.get(a.clientId);
+      if (!clientId) continue; // client didn't survive the restore — skip rather than fail
+      await tx.appointment.create({
+        data: {
+          businessId,
+          clientId,
+          serviceId: a.serviceId ? svcIdMap.get(a.serviceId) || null : null,
+          date: a.date,
+          time: a.time,
+          durationMin: a.durationMin || 60,
+          status: a.status || 'confirmed',
+          note: a.note || null,
+        },
       });
     }
     if (d.settings) {

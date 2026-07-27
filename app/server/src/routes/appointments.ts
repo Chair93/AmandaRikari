@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
+import { assertOwned } from '../ownership.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -74,6 +75,7 @@ router.get('/day', async (req: AuthedRequest, res) => {
 router.post('/', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  await assertOwned(req.businessId!, { clientIds: [parsed.data.clientId], serviceIds: [parsed.data.serviceId] });
   const row = await prisma.appointment.create({
     data: { businessId: req.businessId!, durationMin: 60, ...parsed.data, status: 'confirmed' },
     include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } } },
@@ -86,6 +88,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const existing = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
+  await assertOwned(req.businessId!, { clientIds: [parsed.data.clientId], serviceIds: [parsed.data.serviceId] });
   const row = await prisma.appointment.update({
     where: { id: existing.id },
     data: parsed.data,
