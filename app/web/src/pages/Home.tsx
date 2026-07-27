@@ -23,7 +23,7 @@ export default function Home() {
 
   return (
     <div className="scroll-area">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 30, maxWidth: 900, paddingTop: 26 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 30, maxWidth: 900, width: '100%', margin: '0 auto', paddingTop: 26 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center', padding: '6px 0 2px' }}>
           <img src="/ar-mark-t.png" alt="Amanda Rikari" style={{ width: 158, height: 'auto', display: 'block' }} />
           <div className="serif" style={{ fontSize: 30, fontWeight: 600, letterSpacing: '0.04em', lineHeight: 1.1, color: 'var(--text)' }}>

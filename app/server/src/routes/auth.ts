@@ -23,7 +23,13 @@ const registerSchema = z.object({
   name: z.string().min(1),
 });
 
+/** Public sign-up only creates the very first account (the clinic owner). After
+ *  that, new teammates are added by the owner via Ajustes > Equipe, not by
+ *  self-registering — this app is single-business, not a public SaaS. */
 router.post('/register', async (req, res) => {
+  const existingUserCount = await prisma.user.count();
+  if (existingUserCount > 0) return res.status(403).json({ error: 'Cadastro fechado. Peça para quem administra o sistema te adicionar em Ajustes > Equipe.' });
+
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message || 'invalid_input' });
   const { email, password, name } = parsed.data;
