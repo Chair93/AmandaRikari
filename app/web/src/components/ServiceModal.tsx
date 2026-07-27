@@ -14,6 +14,23 @@ interface ItemRow {
 let seq = 0;
 const nextId = () => 'svcitem_' + ++seq;
 
+const CATEGORY_SUGGESTIONS = [
+  'Limpeza de pele',
+  'Peeling',
+  'Microagulhamento',
+  'Drenagem linfática',
+  'Radiofrequência estética',
+  'Criolipólise',
+  'Depilação a laser',
+  'Toxina botulínica',
+  'Preenchimento facial',
+  'Bioestimulador de colágeno',
+  'Laser facial',
+  'Massagem estética',
+  'Harmonização facial',
+  'Hidratação facial',
+];
+
 export default function ServiceModal({ onClose, editingService }: { onClose: () => void; editingService?: Service | null }) {
   const { data: products = [] } = useProducts();
   const { data: equipment = [] } = useEquipment();
@@ -22,6 +39,7 @@ export default function ServiceModal({ onClose, editingService }: { onClose: () 
   const saveService = useSaveService();
 
   const [name, setName] = useState(editingService?.name || '');
+  const [category, setCategory] = useState(editingService?.category || '');
   const [price, setPrice] = useState(editingService ? String(editingService.price).replace('.', ',') : '');
   const [items, setItems] = useState<ItemRow[]>(
     editingService?.items.map((it) => ({ id: nextId(), kind: it.kind, refId: (it.productId || it.equipmentId)!, qty: String(it.qty) })) ||
@@ -63,6 +81,7 @@ export default function ServiceModal({ onClose, editingService }: { onClose: () 
       await saveService.mutateAsync({
         id: editingService?.id,
         name: name.trim(),
+        category: category.trim() || null,
         price: numOr0(price),
         items: items.filter((it) => it.refId && numOr0(it.qty) > 0).map((it) => ({ kind: it.kind, refId: it.refId, qty: numOr0(it.qty) })),
       });
@@ -74,10 +93,21 @@ export default function ServiceModal({ onClose, editingService }: { onClose: () 
 
   return (
     <Modal title={editingService ? 'Editar serviço' : 'Novo serviço'} onClose={onClose} wide>
-      <label className="field">
-        Nome
-        <input className="input" placeholder="Ex: Limpeza de pele" value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
+      <div className="field-row">
+        <label className="field">
+          Nome
+          <input className="input" placeholder="Ex: Limpeza básica" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="field">
+          Categoria (opcional)
+          <input className="input" list="service-category-suggestions" placeholder="Ex: Limpeza de pele" value={category} onChange={(e) => setCategory(e.target.value)} />
+          <datalist id="service-category-suggestions">
+            {CATEGORY_SUGGESTIONS.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </label>
+      </div>
       <label className="field">
         Preço cobrado (R$)
         <input className="input" inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => setPrice(e.target.value)} />

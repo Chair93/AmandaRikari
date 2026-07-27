@@ -75,6 +75,7 @@ export interface Service {
   id: string;
   name: string;
   price: number;
+  category: string | null;
   items: ServiceItem[];
   cost: number;
 }

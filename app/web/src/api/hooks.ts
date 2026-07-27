@@ -130,7 +130,7 @@ export function useServices() {
 export function useSaveService() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; price: number; items: { kind: string; refId: string; qty: number }[] }) =>
+    mutationFn: (input: { id?: string; name: string; price: number; category?: string | null; items: { kind: string; refId: string; qty: number }[] }) =>
       input.id ? api.put<Service>(`/services/${input.id}`, input) : api.post<Service>('/services', input),
     onSuccess: invalidate,
   });
@@ -138,6 +138,10 @@ export function useSaveService() {
 export function useDeleteService() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.del(`/services/${id}`), onSuccess: invalidate });
+}
+export function useDuplicateService() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (id: string) => api.post<Service>(`/services/${id}/duplicate`), onSuccess: invalidate });
 }
 
 // ---------- Settings ----------

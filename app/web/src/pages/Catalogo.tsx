@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useDeleteEquipment, useDeleteProduct, useDeleteService, useEquipmentBaixa, useEquipmentComprar, useEquipment, useProducts, useServices } from '../api/hooks';
+import { useDeleteEquipment, useDeleteProduct, useDeleteService, useDuplicateService, useEquipmentBaixa, useEquipmentComprar, useEquipment, useProducts, useServices } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, moneyColor, numOr0, UNIT_LABEL } from '../format';
 import ProductModal from '../components/ProductModal';
@@ -98,13 +98,17 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
 function ServiceRow({ sv }: { sv: Service }) {
   const { isOwner } = useAuth();
   const del = useDeleteService();
+  const duplicate = useDuplicateService();
   const [editing, setEditing] = useState(false);
   const margin = sv.price - sv.cost;
   const marginPct = sv.price > 0 ? (margin / sv.price) * 100 : 0;
   return (
     <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{sv.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>{sv.name}</span>
+          {sv.category && <span className="badge">{sv.category}</span>}
+        </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
           {sv.items.length} {sv.items.length === 1 ? 'item na ficha técnica' : 'itens na ficha técnica'}
         </div>
@@ -126,6 +130,9 @@ function ServiceRow({ sv }: { sv: Service }) {
         </div>
         {isOwner && (
           <>
+            <button className="pill ghost sm" onClick={() => duplicate.mutate(sv.id)} disabled={duplicate.isPending}>
+              Duplicar
+            </button>
             <button className="pill ghost sm" onClick={() => setEditing(true)}>
               Editar
             </button>
@@ -170,13 +177,19 @@ function ProductRow({ p }: { p: Product }) {
 
 function PriceSimulator() {
   const { data: services = [] } = useServices();
+  const [selectedId, setSelectedId] = useState('');
   const [custo, setCusto] = useState('');
   const [margem, setMargem] = useState('70');
   const [preco, setPreco] = useState('');
-  const c = numOr0(custo);
+
+  const selected = services.find((s) => s.id === selectedId) || null;
+  // When a service is selected, custo/preço always reflect its live numbers
+  // (ficha técnica + preço cadastrado) instead of a one-time copy, so editing
+  // the service elsewhere keeps this simulator in sync automatically.
+  const c = selected ? selected.cost : numOr0(custo);
+  const p = selected ? selected.price : numOr0(preco);
   const m = Math.min(95, numOr0(margem));
   const sugerido = m < 95 ? c / (1 - m / 100) : c;
-  const p = numOr0(preco);
 
   return (
     <div style={{ background: 'linear-gradient(135deg, var(--surface-2), var(--surface))', border: '1px solid var(--border-strong)', borderRadius: 16, padding: '18px 20px' }}>
@@ -186,10 +199,45 @@ function PriceSimulator() {
       <div className="section-hint" style={{ marginBottom: 14 }}>
         Quanto cobrar para sobrar a margem que você quer — e quanto sobra no preço que você já cobra.
       </div>
+
+      {services.length > 0 && (
+        <label className="field" style={{ marginBottom: 12 }}>
+          Ver serviço (opcional — preenche custo e preço automaticamente)
+          <select className="input" style={{ background: 'var(--surface)' }} value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+            <option value="">Personalizado (preencher manualmente)</option>
+            {groupServicesByCategory(services).map(([category, group]) =>
+              category ? (
+                <optgroup key={category} label={category}>
+                  {group.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                group.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))
+              )
+            )}
+          </select>
+        </label>
+      )}
+
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <label className="field" style={{ flex: 1, minWidth: 130 }}>
           Custo do atendimento (R$)
-          <input className="input" style={{ background: 'var(--surface)' }} inputMode="decimal" placeholder="0,00" value={custo} onChange={(e) => setCusto(e.target.value)} />
+          <input
+            className="input"
+            style={{ background: 'var(--surface)' }}
+            inputMode="decimal"
+            placeholder="0,00"
+            value={selected ? String(Math.round(selected.cost * 100) / 100).replace('.', ',') : custo}
+            disabled={!!selected}
+            onChange={(e) => setCusto(e.target.value)}
+          />
         </label>
         <label className="field" style={{ flex: 1, minWidth: 130 }}>
           Margem desejada (%)
@@ -197,7 +245,15 @@ function PriceSimulator() {
         </label>
         <label className="field" style={{ flex: 1, minWidth: 130 }}>
           Preço que você cobra (R$)
-          <input className="input" style={{ background: 'var(--surface)' }} inputMode="decimal" placeholder="0,00" value={preco} onChange={(e) => setPreco(e.target.value)} />
+          <input
+            className="input"
+            style={{ background: 'var(--surface)' }}
+            inputMode="decimal"
+            placeholder="0,00"
+            value={selected ? String(selected.price).replace('.', ',') : preco}
+            disabled={!!selected}
+            onChange={(e) => setPreco(e.target.value)}
+          />
         </label>
       </div>
       <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
@@ -214,26 +270,20 @@ function PriceSimulator() {
           </div>
         </div>
       </div>
-      {services.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Puxar de um serviço:</span>
-          {services.map((s) => (
-            <button
-              key={s.id}
-              className="pill sm"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--accent-text)' }}
-              onClick={() => {
-                setCusto(String(Math.round(s.cost * 100) / 100).replace('.', ','));
-                setPreco(String(s.price).replace('.', ','));
-              }}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
+}
+
+function groupServicesByCategory(services: Service[]): [string, Service[]][] {
+  const groups = new Map<string, Service[]>();
+  for (const sv of services) {
+    const key = sv.category?.trim() || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(sv);
+  }
+  const categorized = [...groups.entries()].filter(([k]) => k).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'));
+  const uncategorized = groups.get('');
+  return uncategorized && uncategorized.length ? [...categorized, ['', uncategorized]] : categorized;
 }
 
 export default function Catalogo() {
@@ -312,9 +362,16 @@ export default function Catalogo() {
               )}
             </div>
             {services.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {services.map((sv) => (
-                  <ServiceRow key={sv.id} sv={sv} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {groupServicesByCategory(services).map(([category, group]) => (
+                  <div key={category}>
+                    {category && <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em', marginBottom: 8, textTransform: 'uppercase' }}>{category}</div>}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {group.map((sv) => (
+                        <ServiceRow key={sv.id} sv={sv} />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (

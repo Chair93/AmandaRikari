@@ -91,7 +91,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
         productId: it.kind === 'product' ? prodIdMap.get(it.productId || it.refId) || null : null,
         equipmentId: it.kind === 'equipment' ? eqIdMap.get(it.equipmentId || it.refId) || null : null,
       }));
-      const row = await tx.service.create({ data: { businessId, name: s.name, price: s.price || 0, items: { create: items } } });
+      const row = await tx.service.create({ data: { businessId, name: s.name, price: s.price || 0, category: s.category || null, items: { create: items } } });
       svcIdMap.set(s.id, row.id);
     }
     const pkgIdMap = new Map<string, string>();

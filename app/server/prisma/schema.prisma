@@ -146,6 +146,7 @@ model Service {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name       String
   price      Float    @default(0)
+  category   String?
 
   items        ServiceItem[]
   transactions Transaction[]

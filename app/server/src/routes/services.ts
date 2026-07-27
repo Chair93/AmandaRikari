@@ -16,6 +16,7 @@ const itemSchema = z.object({
 const bodySchema = z.object({
   name: z.string().min(1),
   price: z.number().min(0),
+  category: z.string().optional().nullable(),
   items: z.array(itemSchema),
 });
 
@@ -56,7 +57,7 @@ router.post('/', async (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const d = parsed.data;
   const row = await prisma.service.create({
-    data: { businessId: req.businessId!, name: d.name, price: d.price, items: { create: toServiceItemData(d.items) } },
+    data: { businessId: req.businessId!, name: d.name, price: d.price, category: d.category || null, items: { create: toServiceItemData(d.items) } },
     include: { items: true },
   });
   res.status(201).json(serviceWithCost(row, await costContext(req.businessId!)));
@@ -72,7 +73,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     await tx.serviceItem.deleteMany({ where: { serviceId: existing.id } });
     return tx.service.update({
       where: { id: existing.id },
-      data: { name: d.name, price: d.price, items: { create: toServiceItemData(d.items) } },
+      data: { name: d.name, price: d.price, category: d.category || null, items: { create: toServiceItemData(d.items) } },
       include: { items: true },
     });
   });
@@ -84,6 +85,24 @@ router.delete('/:id', async (req: AuthedRequest, res) => {
   if (!existing) return res.status(404).json({ error: 'not_found' });
   await prisma.service.delete({ where: { id: existing.id } });
   res.status(204).end();
+});
+
+/** Clones a service (and its item list) so the owner can quickly make a variant
+ *  ("Limpeza básica" -> duplicate -> rename to "Limpeza básica + peeling"). */
+router.post('/:id/duplicate', async (req: AuthedRequest, res) => {
+  const existing = await prisma.service.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { items: true } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  const row = await prisma.service.create({
+    data: {
+      businessId: req.businessId!,
+      name: `${existing.name} (cópia)`,
+      price: existing.price,
+      category: existing.category,
+      items: { create: existing.items.map((it) => ({ kind: it.kind, qty: it.qty, productId: it.productId, equipmentId: it.equipmentId })) },
+    },
+    include: { items: true },
+  });
+  res.status(201).json(serviceWithCost(row, await costContext(req.businessId!)));
 });
 
 export default router;
