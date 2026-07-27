@@ -23,7 +23,19 @@ interface SaleRow {
 let rowSeq = 0;
 const nextRowId = () => 'row_' + ++rowSeq;
 
-function TransactionForm({ onClose, editingTx, defaultType, defaultClientId }: { onClose: () => void; editingTx?: Transaction | null; defaultType?: 'receita' | 'despesa'; defaultClientId?: string }) {
+function TransactionForm({
+  onClose,
+  editingTx,
+  defaultType,
+  defaultClientId,
+  lockType,
+}: {
+  onClose: () => void;
+  editingTx?: Transaction | null;
+  defaultType?: 'receita' | 'despesa';
+  defaultClientId?: string;
+  lockType?: boolean;
+}) {
   const { data: categories = [] } = useCategories();
   const { data: clients = [] } = useClients();
   const { data: services = [] } = useServices();
@@ -198,19 +210,28 @@ function TransactionForm({ onClose, editingTx, defaultType, defaultClientId }: {
     onClose();
   }
 
+  const titleFor = () => {
+    if (editingTx) return 'Editar lançamento';
+    if (lockType && defaultType === 'receita') return 'Registrar atendimento';
+    if (lockType && defaultType === 'despesa') return 'Lançar despesa';
+    return 'Novo lançamento';
+  };
+
   return (
-    <Modal title={editingTx ? 'Editar lançamento' : 'Novo lançamento'} onClose={onClose}>
-      <div className="tab-row">
-        <button className={'tab' + (mode === 'despesa' ? ' active-expense' : '')} onClick={() => switchMode('despesa')}>
-          Despesa
-        </button>
-        <button className={'tab' + (mode === 'receita' ? ' active-income' : '')} onClick={() => switchMode('receita')}>
-          Receita
-        </button>
-        <button className={'tab' + (mode === 'socio' ? ' active-accent' : '')} onClick={() => switchMode('socio')}>
-          Sócio
-        </button>
-      </div>
+    <Modal title={titleFor()} onClose={onClose}>
+      {!(lockType && !editingTx) && (
+        <div className="tab-row">
+          <button className={'tab' + (mode === 'despesa' ? ' active-expense' : '')} onClick={() => switchMode('despesa')}>
+            Despesa
+          </button>
+          <button className={'tab' + (mode === 'receita' ? ' active-income' : '')} onClick={() => switchMode('receita')}>
+            Receita
+          </button>
+          <button className={'tab' + (mode === 'socio' ? ' active-accent' : '')} onClick={() => switchMode('socio')}>
+            Sócio
+          </button>
+        </div>
+      )}
 
       {mode === 'socio' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -434,13 +455,15 @@ export default function TransactionModal({
   editingTxId,
   defaultType,
   defaultClientId,
+  lockType,
 }: {
   onClose: () => void;
   editingTxId?: string | null;
   defaultType?: 'receita' | 'despesa';
   defaultClientId?: string;
+  lockType?: boolean;
 }) {
   const { data: editingTx, isLoading } = useTransaction(editingTxId);
   if (editingTxId && isLoading) return null;
-  return <TransactionForm onClose={onClose} editingTx={editingTx} defaultType={defaultType} defaultClientId={defaultClientId} />;
+  return <TransactionForm onClose={onClose} editingTx={editingTx} defaultType={defaultType} defaultClientId={defaultClientId} lockType={lockType} />;
 }

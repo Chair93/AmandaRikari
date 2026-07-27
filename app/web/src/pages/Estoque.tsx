@@ -6,7 +6,6 @@ import { fmtBRL, fmtDateBR, moneyColor, numOr0, UNIT_LABEL } from '../format';
 import type { Equipment, Product } from '../api/types';
 import ProductModal from '../components/ProductModal';
 import EquipmentModal from '../components/EquipmentModal';
-import { useNavigate } from 'react-router-dom';
 
 function daysUntil(iso: string): number {
   const DAY = 86400000;
@@ -188,7 +187,6 @@ export default function Estoque() {
   const { data: products = [] } = useProducts();
   const { data: equipment = [] } = useEquipment();
   const { isOwner } = useAuth();
-  const navigate = useNavigate();
   const [modal, setModal] = useState<'product' | 'equipment' | null>(null);
 
   const operacionais = products.filter((p) => p.kind !== 'descartavel');
@@ -257,13 +255,9 @@ export default function Estoque() {
             ) : (
               <div className="empty-state">
                 <span>Nenhum produto operacional cadastrado.</span>
-                {isOwner ? (
+                {isOwner && (
                   <button className="btn-primary" onClick={() => setModal('product')}>
                     + Produto
-                  </button>
-                ) : (
-                  <button className="btn-primary" onClick={() => navigate('/catalogo')}>
-                    Abrir catálogo
                   </button>
                 )}
               </div>

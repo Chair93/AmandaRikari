@@ -37,7 +37,7 @@ const NAV = [
     section: 'Cadastros',
     items: [
       { to: '/estoque', label: 'Estoque', icon: IconBox },
-      { to: '/catalogo', label: 'Produtos e serviços', icon: IconTag },
+      { to: '/catalogo', label: 'Serviços', icon: IconTag },
       { to: '/categorias', label: 'Categorias', icon: IconLines },
       { to: '/ajustes', label: 'Ajustes', icon: IconGear },
     ],

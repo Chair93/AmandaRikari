@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useDeleteProduct, useDeleteService, useDuplicateService, useProducts, useServices } from '../api/hooks';
+import { useDeleteService, useDuplicateService, useServices } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtBRL, moneyColor, numOr0, UNIT_LABEL } from '../format';
-import ProductModal from '../components/ProductModal';
+import { fmtBRL, moneyColor, numOr0 } from '../format';
 import ServiceModal from '../components/ServiceModal';
-import type { Product, Service } from '../api/types';
+import type { Service } from '../api/types';
 
 function ServiceRow({ sv }: { sv: Service }) {
   const { isOwner } = useAuth();
@@ -55,34 +54,6 @@ function ServiceRow({ sv }: { sv: Service }) {
         )}
       </div>
       {editing && <ServiceModal onClose={() => setEditing(false)} editingService={sv} />}
-    </div>
-  );
-}
-
-function ProductRow({ p }: { p: Product }) {
-  const { isOwner } = useAuth();
-  const del = useDeleteProduct();
-  const [editing, setEditing] = useState(false);
-  const perUnit = p.packageQty > 0 ? p.packageCost / p.packageQty : 0;
-  return (
-    <div className="list-row">
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</div>
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-          {fmtBRL(perUnit)} / {UNIT_LABEL[p.unit] || p.unit}
-        </div>
-      </div>
-      {isOwner && (
-        <>
-          <button className="pill ghost sm" onClick={() => setEditing(true)}>
-            Editar
-          </button>
-          <button className="icon-btn" onClick={() => del.mutate(p.id)}>
-            ×
-          </button>
-        </>
-      )}
-      {editing && <ProductModal onClose={() => setEditing(false)} editingProduct={p} />}
     </div>
   );
 }
@@ -199,38 +170,17 @@ function groupServicesByCategory(services: Service[]): [string, Service[]][] {
 }
 
 export default function Catalogo() {
-  const { data: products = [] } = useProducts();
   const { data: services = [] } = useServices();
   const { isOwner } = useAuth();
-  const [modal, setModal] = useState<'product' | 'service' | null>(null);
+  const [modal, setModal] = useState<'service' | null>(null);
 
   return (
     <>
-      <PageHeader title="Produtos e serviços" subtitle="Produtos, equipamentos e serviços para calcular custo e margem" />
+      <PageHeader title="Serviços" subtitle="Preço, custo e margem de cada atendimento" />
       <div className="scroll-area">
         <div className="page">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div className="section-title">Produtos e insumos</div>
-              {isOwner && (
-                <button className="pill accent sm" onClick={() => setModal('product')}>
-                  + Produto
-                </button>
-              )}
-            </div>
-            {products.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
-                {products.map((p) => (
-                  <ProductRow key={p.id} p={p} />
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">Nenhum produto cadastrado. Cadastre cremes, séruns e outros insumos com o custo por ml/g/unidade.</div>
-            )}
-          </div>
-
           <div className="info-banner" style={{ background: 'var(--accent-soft)', color: 'var(--accent-dark)' }}>
-            Bens e equipamentos (máquinas, utensílios) agora ficam na aba <strong>Estoque</strong>, junto com o resto do que a clínica possui.
+            Produtos, descartáveis e equipamentos ficam todos na aba <strong>Estoque</strong> — cadastro e controle de quantidade juntos, no mesmo lugar.
           </div>
 
           <PriceSimulator />
@@ -268,7 +218,6 @@ export default function Catalogo() {
           </div>
         </div>
       </div>
-      {modal === 'product' && <ProductModal onClose={() => setModal(null)} />}
       {modal === 'service' && <ServiceModal onClose={() => setModal(null)} />}
     </>
   );

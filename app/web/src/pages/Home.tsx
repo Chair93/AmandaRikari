@@ -107,7 +107,9 @@ export default function Home() {
         )}
       </div>
 
-      {(modal === 'tx-receita' || modal === 'tx-despesa') && <TransactionModal onClose={() => setModal(null)} defaultType={modal === 'tx-receita' ? 'receita' : 'despesa'} />}
+      {(modal === 'tx-receita' || modal === 'tx-despesa') && (
+        <TransactionModal onClose={() => setModal(null)} defaultType={modal === 'tx-receita' ? 'receita' : 'despesa'} lockType />
+      )}
       {modal === 'client' && <ClientModal onClose={() => setModal(null)} />}
       {modal === 'bill' && <BillModal onClose={() => setModal(null)} defaultKind="receber" />}
       {modal === 'package' && <PackageModal onClose={() => setModal(null)} />}
