@@ -112,6 +112,7 @@ model Product {
   stock       Float    @default(0)
   avgCost     Float    @default(0)
   expiresAt   String? // 'YYYY-MM-DD'
+  kind        String   @default("operacional") // 'operacional' | 'descartavel'
 
   serviceItems     ServiceItem[]
   transactionItems TransactionItem[]

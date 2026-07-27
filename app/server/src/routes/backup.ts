@@ -72,7 +72,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     const prodIdMap = new Map<string, string>();
     for (const p of d.products || []) {
       const row = await tx.product.create({
-        data: { businessId, name: p.name, unit: p.unit || 'ml', packageCost: p.packageCost || 0, packageQty: p.packageQty || 1, salePrice: p.salePrice || 0, stock: p.stock || 0, avgCost: p.avgCost || p.packageCost || 0, expiresAt: p.expiresAt || null },
+        data: { businessId, name: p.name, unit: p.unit || 'ml', packageCost: p.packageCost || 0, packageQty: p.packageQty || 1, salePrice: p.salePrice || 0, stock: p.stock || 0, avgCost: p.avgCost || p.packageCost || 0, expiresAt: p.expiresAt || null, kind: p.kind || 'operacional' },
       });
       prodIdMap.set(p.id, row.id);
     }

@@ -74,7 +74,7 @@ export function useProducts() {
 export function useSaveProduct() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; unit: string; packageCost: number; packageQty: number; salePrice?: number; stock?: number; expiresAt?: string | null }) =>
+    mutationFn: (input: { id?: string; name: string; unit: string; packageCost: number; packageQty: number; salePrice?: number; stock?: number; expiresAt?: string | null; kind?: 'operacional' | 'descartavel' }) =>
       input.id ? api.put<Product>(`/products/${input.id}`, input) : api.post<Product>('/products', input),
     onSuccess: invalidate,
   });

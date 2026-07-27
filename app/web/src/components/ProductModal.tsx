@@ -11,7 +11,7 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
   const [packageCost, setPackageCost] = useState(editingProduct ? String(editingProduct.packageCost).replace('.', ',') : '');
   const [packageQty, setPackageQty] = useState(editingProduct ? String(editingProduct.packageQty).replace('.', ',') : '');
   const [salePrice, setSalePrice] = useState(editingProduct?.salePrice ? String(editingProduct.salePrice).replace('.', ',') : '');
-  const [stock, setStock] = useState(editingProduct?.stock ? String(editingProduct.stock).replace('.', ',') : '');
+  const [kind, setKind] = useState<'operacional' | 'descartavel'>(editingProduct?.kind || 'operacional');
   const [expiresAt, setExpiresAt] = useState(editingProduct?.expiresAt || '');
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +30,7 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
         packageCost: numOr0(packageCost),
         packageQty: numOr0(packageQty),
         salePrice: numOr0(salePrice),
-        stock: numOr0(stock),
+        kind,
         expiresAt: expiresAt || null,
       });
       onClose();
@@ -41,6 +41,14 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
 
   return (
     <Modal title={editingProduct ? 'Editar produto' : 'Novo produto'} onClose={onClose}>
+      <div className="tab-row">
+        <button className={'tab' + (kind === 'operacional' ? ' active-income' : '')} onClick={() => setKind('operacional')}>
+          Estoque operacional
+        </button>
+        <button className={'tab' + (kind === 'descartavel' ? ' active-accent' : '')} onClick={() => setKind('descartavel')}>
+          Descartável
+        </button>
+      </div>
       <label className="field">
         Nome
         <input className="input" placeholder="Ex: Creme hidratante" value={name} onChange={(e) => setName(e.target.value)} />
@@ -70,10 +78,11 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
         Preço de venda (opcional — se vender esse produto pronto)
         <input className="input" inputMode="decimal" placeholder="0,00" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} />
       </label>
-      <label className="field">
-        Estoque atual
-        <input className="input" inputMode="decimal" placeholder="0" value={stock} onChange={(e) => setStock(e.target.value)} />
-      </label>
+      {!editingProduct && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          O produto entra cadastrado com estoque zerado — use o botão <strong>+ Entrada</strong> no Estoque pra registrar a primeira compra (e lançar como saída no caixa, se quiser).
+        </div>
+      )}
       <label className="field">
         Validade (opcional)
         <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />

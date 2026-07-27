@@ -46,6 +46,7 @@ export interface Product {
   stock: number;
   avgCost: number;
   expiresAt: string | null;
+  kind: 'operacional' | 'descartavel';
 }
 
 export interface Equipment {
