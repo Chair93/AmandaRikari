@@ -1,0 +1,344 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enums in Prisma — string fields below are validated
+// by zod at the API layer. Allowed values are documented per field.
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  memberships          Membership[]
+  passwordResetTokens  PasswordResetToken[]
+}
+
+/// One business = one shared Rikari workspace. Members access the same data,
+/// scoped by role (owner can edit; viewer is read-only).
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members      Membership[]
+  categories   Category[]
+  clients      Client[]
+  products     Product[]
+  equipment    Equipment[]
+  services     Service[]
+  transactions Transaction[]
+  bills        Bill[]
+  recurring    Recurring[]
+  packages     Package[]
+  appointments Appointment[]
+  settings     Settings?
+}
+
+model Membership {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  role       String   @default("owner") // 'owner' | 'viewer'
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, businessId])
+  @@index([businessId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  type       String // 'receita' | 'despesa'
+  investment Boolean  @default(false) // despesa marcada como investimento (fora do DRE)
+
+  transactions Transaction[]
+  bills        Bill[]
+  recurring    Recurring[]
+
+  @@index([businessId])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String?
+  birthday   String? // 'YYYY-MM-DD'
+  notes      String?
+
+  transactions Transaction[]
+  bills        Bill[]
+  packages     Package[]
+  appointments Appointment[]
+
+  @@index([businessId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  unit        String   @default("ml") // 'ml' | 'g' | 'unidade'
+  packageCost Float    @default(0)
+  packageQty  Float    @default(1)
+  salePrice   Float    @default(0)
+  stock       Float    @default(0)
+  avgCost     Float    @default(0)
+  expiresAt   String? // 'YYYY-MM-DD'
+
+  serviceItems     ServiceItem[]
+  transactionItems TransactionItem[]
+  sales            TransactionSale[]
+
+  @@index([businessId])
+}
+
+model Equipment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  kind       String   @default("utensilio") // 'utensilio' | 'maquina'
+  qty        Float    @default(1)
+  cost       Float    @default(0) // cost per unit
+  usefulUses Float    @default(0) // uses per unit until fully depreciated
+  kwh        Float    @default(0) // kWh per hour of use (maquina only)
+  baixas     Float    @default(0) // units written off
+  perdaBaixa Float    @default(0) // undepreciated value lost on write-off
+  baixadoEm  String?
+
+  serviceItems     ServiceItem[]
+  transactionItems TransactionItem[]
+
+  @@index([businessId])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  price      Float    @default(0)
+
+  items        ServiceItem[]
+  transactions Transaction[]
+  packages     Package[]
+  appointments Appointment[]
+
+  @@index([businessId])
+}
+
+model ServiceItem {
+  id          String     @id @default(cuid())
+  serviceId   String
+  service     Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  kind        String // 'product' | 'equipment'
+  productId   String?
+  product     Product?   @relation(fields: [productId], references: [id])
+  equipmentId String?
+  equipment   Equipment? @relation(fields: [equipmentId], references: [id])
+  qty         Float
+
+  @@index([serviceId])
+}
+
+model Transaction {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type         String // 'receita' | 'despesa'
+  amount       Float
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id])
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id])
+  serviceId    String?
+  service      Service? @relation(fields: [serviceId], references: [id])
+  distanciaKm  Float?
+  variableCost Float? // null = despesa sem ficha técnica; number (>=0) = receita com custo calculado
+  date         String // 'YYYY-MM-DD'
+  note         String?
+
+  // sócio (partner contribution / payout)
+  capital     String? // 'aporte' | 'pagamento'
+  capitalKind String? // 'capital' | 'emprestimo'
+  socio       String?
+
+  payment String? // 'dinheiro' | 'pix' | 'debito' | 'credito'
+  feeOf   String? // id of the tx this machine-fee expense belongs to
+
+  prolabore Boolean @default(false)
+  estoque   Boolean @default(false) // compra de estoque (investimento)
+  ativo     Boolean @default(false) // compra de bem (investimento)
+
+  // Deferred revenue for prepaid packages: the sale (or installment payoff)
+  // moves cash but hasn't been earned yet (cashOnly); using up a session
+  // earns its proportional share of revenue without moving new cash
+  // (accrualOnly). A normal transaction is neither — cash and revenue move
+  // together, same as before this existed.
+  cashOnly    Boolean @default(false)
+  accrualOnly Boolean @default(false)
+
+  packageId String?
+  pkg       Package? @relation(fields: [packageId], references: [id])
+
+  items TransactionItem[]
+  sales TransactionSale[]
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId])
+  @@index([businessId, date])
+  @@index([clientId])
+}
+
+model TransactionItem {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  kind          String // 'product' | 'equipment'
+  productId     String?
+  product       Product?    @relation(fields: [productId], references: [id])
+  equipmentId   String?
+  equipment     Equipment?  @relation(fields: [equipmentId], references: [id])
+  qty           Float
+
+  @@index([transactionId])
+}
+
+model TransactionSale {
+  id            String      @id @default(cuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  qty           Float
+  unitPrice     Float
+  unitCost      Float
+
+  @@index([transactionId])
+}
+
+model Settings {
+  id                String   @id @default(cuid())
+  businessId        String   @unique
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  energyPricePerKwh Float    @default(0)
+  costPerKm         Float    @default(0)
+  prolaboreMode     String   @default("pct") // 'pct' | 'fixo'
+  prolaborePct      Float    @default(0)
+  prolaboreFixo     Float    @default(0)
+  metaMensal        Float    @default(0)
+  taxaCredito       Float    @default(0)
+  taxaDebito        Float    @default(0)
+  taxaPix           Float    @default(0)
+  emailDigestEnabled Boolean @default(false)
+  agendaStartHour    Int     @default(9)
+  agendaEndHour      Int     @default(19)
+  agendaSlotMin      Int     @default(30)
+}
+
+model Bill {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind       String // 'pagar' | 'receber'
+  desc       String
+  amount     Float
+  due        String // 'YYYY-MM-DD'
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id])
+  note       String?
+  recorrente Boolean   @default(false)
+  settled    Boolean   @default(false)
+  settledAt  String?
+  txId       String?
+  recId      String?
+  // Set when this bill is an installment of a package sold "a prazo" — lets
+  // settlement flag the resulting transaction cashOnly (paying an
+  // installment moves cash but doesn't itself earn revenue).
+  packageId  String?
+  package    Package?  @relation(fields: [packageId], references: [id])
+
+  @@index([businessId])
+}
+
+model Recurring {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  desc       String
+  amount     Float
+  dueDay     Int       @default(5)
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  geradas    String    @default("[]") // JSON array of 'YYYY-MM' month keys already generated
+
+  @@index([businessId])
+}
+
+model Package {
+  id           String        @id @default(cuid())
+  businessId   String
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id])
+  serviceId    String?
+  service      Service?      @relation(fields: [serviceId], references: [id])
+  sessions     Int
+  used         Int           @default(0)
+  amount       Float
+  date         String
+  aprazo       Boolean       @default(false)
+  parcelas     Int?
+  transactions Transaction[]
+  bills        Bill[]
+
+  @@index([businessId])
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id])
+  date        String // 'YYYY-MM-DD'
+  time        String // 'HH:MM'
+  durationMin Int      @default(60)
+  status      String   @default("confirmed") // 'confirmed' | 'cancelled'
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([businessId])
+}
