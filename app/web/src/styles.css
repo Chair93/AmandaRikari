@@ -1720,3 +1720,103 @@ select.input:focus {
     outline-offset: 2px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMMAND PALETTE — Ctrl+K
+   Mounted everywhere but only reachable with a keyboard, so in practice it
+   is a desktop affordance. Left mounted on phones rather than branching on
+   width, since an external keyboard on an iPad should still open it.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: oklch(20% 0.02 30 / 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 20px 20px;
+}
+.cmdk {
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 62vh;
+}
+.cmdk-input {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 17px 20px;
+  font-size: 16px;
+  color: var(--text);
+  border-bottom: 1px solid var(--divider);
+}
+.cmdk-input::placeholder {
+  color: var(--text-soft);
+}
+.cmdk-results {
+  overflow-y: auto;
+  padding: 6px;
+  flex: 1;
+}
+.cmdk-group {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  padding: 10px 12px 4px;
+}
+.cmdk-item {
+  all: unset;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+.cmdk-item[data-active='true'] {
+  background: var(--active-bg);
+}
+.cmdk-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cmdk-empty {
+  padding: 26px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cmdk-foot {
+  display: flex;
+  gap: 16px;
+  padding: 9px 18px;
+  border-top: 1px solid var(--divider);
+  background: var(--surface-2);
+  font-size: 11px;
+  color: var(--text-muted);
+}

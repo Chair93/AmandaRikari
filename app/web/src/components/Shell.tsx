@@ -14,6 +14,7 @@ import {
   IconGear,
 } from '../icons';
 import ThemeToggle from './ThemeToggle';
+import CommandPalette from './CommandPalette';
 
 const NAV = [
   {
@@ -97,6 +98,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           descendant — the toggle ended up pinned inside the tab bar instead
           of the top of the screen. */}
       <ThemeToggle />
+      <CommandPalette />
       <main className="app-main">{children}</main>
     </div>
   );

@@ -52,8 +52,9 @@ export function useDeleteCategory() {
 }
 
 // ---------- Clients ----------
-export function useClients() {
-  return useQuery({ queryKey: ['clients'], queryFn: () => api.get<Client[]>('/clients') });
+/** `enabled` lets the command palette hold off fetching until it opens. */
+export function useClients(enabled = true) {
+  return useQuery({ queryKey: ['clients'], queryFn: () => api.get<Client[]>('/clients'), enabled });
 }
 export function useSaveClient() {
   const invalidate = useInvalidateAll();
@@ -69,8 +70,8 @@ export function useDeleteClient() {
 }
 
 // ---------- Products ----------
-export function useProducts() {
-  return useQuery({ queryKey: ['products'], queryFn: () => api.get<Product[]>('/products') });
+export function useProducts(enabled = true) {
+  return useQuery({ queryKey: ['products'], queryFn: () => api.get<Product[]>('/products'), enabled });
 }
 export function useSaveProduct() {
   const invalidate = useInvalidateAll();
@@ -141,8 +142,8 @@ export function useEquipmentBaixa() {
 }
 
 // ---------- Services ----------
-export function useServices() {
-  return useQuery({ queryKey: ['services'], queryFn: () => api.get<Service[]>('/services') });
+export function useServices(enabled = true) {
+  return useQuery({ queryKey: ['services'], queryFn: () => api.get<Service[]>('/services'), enabled });
 }
 export function useSaveService() {
   const invalidate = useInvalidateAll();
