@@ -16,8 +16,8 @@ export interface AuthedRequest extends Request {
   role?: Role;
 }
 
-export function signToken(userId: string): string {
-  return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
+export function signToken(userId: string, tokenVersion: number): string {
+  return jwt.sign({ sub: userId, tv: tokenVersion }, JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
 
 export function setAuthCookie(res: Response, token: string) {
@@ -41,12 +41,20 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) return res.status(401).json({ error: 'not_authenticated' });
   let userId: string;
+  let tokenVersion: number;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
+    const payload = jwt.verify(token, JWT_SECRET) as { sub: string; tv?: number };
     userId = payload.sub;
+    tokenVersion = payload.tv ?? 0;
   } catch {
     return res.status(401).json({ error: 'invalid_token' });
   }
+  // Changing the password bumps tokenVersion, which retires every session
+  // issued before it — otherwise a stolen cookie stays valid for 30 days even
+  // after the user "secures" the account.
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { tokenVersion: true } });
+  if (!user || user.tokenVersion !== tokenVersion) return res.status(401).json({ error: 'session_expired' });
+
   const membership = await prisma.membership.findFirst({ where: { userId } });
   if (!membership) return res.status(401).json({ error: 'no_business' });
   req.userId = userId;

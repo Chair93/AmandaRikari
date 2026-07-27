@@ -51,7 +51,7 @@ router.post('/register', async (req, res) => {
     return { u, business };
   });
 
-  const token = signToken(user.u.id);
+  const token = signToken(user.u.id, user.u.tokenVersion);
   setAuthCookie(res, token);
   res.status(201).json({ id: user.u.id, email: user.u.email, name: user.u.name, role: 'owner', businessName: user.business.name });
 });
@@ -71,7 +71,7 @@ router.post('/login', async (req, res) => {
   const membership = await prisma.membership.findFirst({ where: { userId: user.id }, include: { business: true } });
   if (!membership) return res.status(401).json({ error: 'Esta conta não está vinculada a nenhum negócio' });
 
-  const token = signToken(user.id);
+  const token = signToken(user.id, user.tokenVersion);
   setAuthCookie(res, token);
   res.json({ id: user.id, email: user.email, name: user.name, role: membership.role, businessName: membership.business.name });
 });
@@ -100,7 +100,10 @@ router.post('/change-password', requireAuth, async (req: AuthedRequest, res) => 
   const ok = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
   if (!ok) return res.status(400).json({ error: 'Senha atual incorreta' });
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  // Bump tokenVersion so other sessions are logged out, then re-issue this
+  // one's cookie so the person changing the password isn't kicked out too.
+  const updated = await prisma.user.update({ where: { id: user.id }, data: { passwordHash, tokenVersion: { increment: 1 } } });
+  setAuthCookie(res, signToken(updated.id, updated.tokenVersion));
   res.status(204).end();
 });
 
@@ -150,7 +153,8 @@ router.post('/reset-password', async (req, res) => {
   }
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.$transaction([
-    prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    // A reset means "I may have been compromised" — retire every existing session.
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash, tokenVersion: { increment: 1 } } }),
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
   ]);
   res.status(204).end();
