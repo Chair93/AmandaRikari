@@ -324,7 +324,7 @@ export default function Estoque() {
               )}
             </div>
             {operacionais.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+              <div className="list">
                 {operacionais.map((p) => (
                   <EstoqueRow key={p.id} p={p} />
                 ))}
@@ -356,7 +356,7 @@ export default function Estoque() {
               )}
             </div>
             {descartaveis.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+              <div className="list">
                 {descartaveis.map((p) => (
                   <EstoqueRow key={p.id} p={p} />
                 ))}
@@ -381,7 +381,7 @@ export default function Estoque() {
               )}
             </div>
             {equipment.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+              <div className="list">
                 {equipment.map((eq) => (
                   <EquipmentRow key={eq.id} eq={eq} />
                 ))}

@@ -27,27 +27,27 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
   const venceLabel = dias === 0 ? 'vence hoje' : dias > 0 ? `em ${dias} dia${dias === 1 ? '' : 's'}` : `atrasada ${-dias} dia${dias === -1 ? '' : 's'}`;
 
   return (
-    <div className="list-row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
+    <div className="list-row">
       <div style={{ flex: '1 1 160px', minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{bill.desc}</div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {client ? client.name + ' · ' : ''}vence {fmtDateBR(bill.due)} · {venceLabel}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 'none' }}>
+      <div className="row-stats">
         <span className={'badge' + (dias < 0 ? ' expense' : '')}>{dias < 0 ? 'Atrasada' : 'Em aberto'}</span>
         <span style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtBRL(bill.amount)}</span>
-        {isOwner && (
+      </div>
+      {isOwner && (
+        <div className="row-actions">
           <button className={'pill sm ' + (kind === 'pagar' ? 'expense' : 'income')} onClick={() => setSettling(true)}>
             {kind === 'pagar' ? 'Dar baixa' : 'Recebi'}
           </button>
-        )}
-        {isOwner && (
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             editar
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {editing && <BillModal onClose={() => setEditing(false)} editingBill={bill} />}
       {settling && (
         <PromptModal
@@ -117,7 +117,7 @@ function AgingReport({ aPagarList, aReceberList }: { aPagarList: Bill[]; aRecebe
       <div className="section-hint" style={{ marginBottom: 12 }}>
         Quanto tempo essas contas estão vencidas — quanto mais tempo, maior o risco de nunca receber ou de juros no pagar.
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', borderRadius: 14, overflow: 'hidden' }}>
+      <div className="list">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 14px', background: 'var(--surface-2)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
           <span style={{ flex: 1 }}>ATRASO</span>
           <span style={{ width: 130, textAlign: 'right' }}>A RECEBER</span>
@@ -188,7 +188,7 @@ function RecurringSection() {
         )}
       </div>
       {recurring.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', borderRadius: 14, overflow: 'hidden' }}>
+        <div className="list">
           {recurring.map((r) => (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--surface)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>

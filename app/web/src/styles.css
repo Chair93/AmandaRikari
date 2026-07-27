@@ -999,8 +999,13 @@ select.input:focus {
   /* Section headers put their "+ Produto"/"+ Serviço" button beside a title
      and a hint; on a phone that squeezes the hint to one word per line. */
   .section-head {
-    flex-wrap: wrap;
-    row-gap: 8px;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .section-head > *:first-child {
+    flex: 1;
+    min-width: 0;
   }
   /* Seven day cells sharing a line with two arrows and "Hoje" leaves each day
      about 30px wide. Giving the strip its own line buys back ~90px. */
@@ -1039,5 +1044,398 @@ select.input:focus {
   .tab {
     padding-top: 10px;
     padding-bottom: 10px;
+  }
+}
+
+.nav-brand {
+  width: 54px;
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.theme-toggle {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: var(--idle-color);
+  background: var(--surface-2);
+  flex: none;
+}
+
+/* The icon tile and chevron are iOS affordances: the markup is always there,
+   but they stay hidden until the phone breakpoint switches them on. */
+.cell-icon,
+.cell-chevron {
+  display: none;
+}
+.cell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   "CLÍNICA" — iOS treatment, phones only.
+
+   Everything below is scoped to the phone breakpoint on purpose: the
+   desktop layout stays exactly as it was. The idea is to borrow the
+   grammar people already know from iOS — a large title, grouped inset
+   lists on a recessed background, hairline separators, chevrons on
+   anything that navigates — so there is nothing new to learn.
+
+   Dark mode swaps in the "Noturno" palette: near-black ground, brass
+   accent, and semantic green/red that stay legible on it.
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 780px) {
+  :root {
+    --bg: #f2f1f6;              /* iOS grouped background */
+    --surface: #ffffff;         /* cells sit on it, not the other way round */
+    --surface-2: #eceaf0;
+    --border: #e3e2e8;
+    --border-strong: #d6d5dd;
+    --divider: #e3e2e8;
+    --text: #12121a;
+    --text-muted: #8a8a90;
+    --text-soft: #a3a3aa;
+
+    --accent: #b0475f;
+    --accent-2: #9c3d54;
+    --accent-dark: #963a50;
+    --accent-text: #b0475f;
+    --accent-soft: #fbe9ed;
+    --accent-soft-strong: #f7dbe2;
+
+    --income: #2f9e5f;
+    --income-text: #27834e;
+    --income-soft: #e4f4ea;
+    --expense: #c9453c;
+    --expense-text: #b83a32;
+    --expense-soft: #fbe7e5;
+    --warning-text: #9a6212;
+    --warning-soft: #fdf0dc;
+
+    --active-bg: #fbe9ed;
+    --active-color: #b0475f;
+    --idle-color: #8a8a90;
+
+    --radius-lg: 14px;
+    --radius-md: 12px;
+    --radius-sm: 10px;
+    --shadow-card: none;
+    --shadow-hero: 0 8px 22px rgb(176 71 95 / 0.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #0d0f13;
+      --surface: #161a20;
+      --surface-2: #1e232b;
+      --border: #232830;
+      --border-strong: #2e343e;
+      --divider: #232830;
+      --text: #e8ebf0;
+      --text-muted: #838c9b;
+      --text-soft: #6f7885;
+
+      --accent: #c2a878;         /* brass — the only brand thread at night */
+      --accent-2: #ab9264;
+      --accent-dark: #d4bc8e;
+      --accent-text: #c2a878;
+      --accent-soft: rgb(194 168 120 / 0.16);
+      --accent-soft-strong: rgb(194 168 120 / 0.24);
+
+      --income: #58bd88;
+      --income-text: #6fcf9c;
+      --income-soft: rgb(88 189 136 / 0.15);
+      --expense: #dd6a63;
+      --expense-text: #e9847e;
+      --expense-soft: rgb(221 106 99 / 0.15);
+      --warning-text: #e0b878;
+      --warning-soft: rgb(224 184 120 / 0.15);
+
+      --active-bg: rgb(194 168 120 / 0.18);
+      --active-color: #c2a878;
+      --idle-color: #838c9b;
+
+      --shadow-card: none;
+      --shadow-hero: 0 8px 22px rgb(0 0 0 / 0.5);
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #0d0f13;
+    --surface: #161a20;
+    --surface-2: #1e232b;
+    --border: #232830;
+    --border-strong: #2e343e;
+    --divider: #232830;
+    --text: #e8ebf0;
+    --text-muted: #838c9b;
+    --text-soft: #6f7885;
+
+    --accent: #c2a878;
+    --accent-2: #ab9264;
+    --accent-dark: #d4bc8e;
+    --accent-text: #c2a878;
+    --accent-soft: rgb(194 168 120 / 0.16);
+    --accent-soft-strong: rgb(194 168 120 / 0.24);
+
+    --income: #58bd88;
+    --income-text: #6fcf9c;
+    --income-soft: rgb(88 189 136 / 0.15);
+    --expense: #dd6a63;
+    --expense-text: #e9847e;
+    --expense-soft: rgb(221 106 99 / 0.15);
+    --warning-text: #e0b878;
+    --warning-soft: rgb(224 184 120 / 0.15);
+
+    --active-bg: rgb(194 168 120 / 0.18);
+    --active-color: #c2a878;
+    --idle-color: #838c9b;
+
+    --shadow-card: none;
+    --shadow-hero: 0 8px 22px rgb(0 0 0 / 0.5);
+  }
+
+  /* ── System type ──────────────────────────────────────────────── */
+  /* On iOS this resolves to SF Pro, which is most of why the result reads as
+     native. The serif survives only on the brand lockup on Início. */
+  body,
+  input,
+  select,
+  textarea,
+  button,
+  h1,
+  h2,
+  h3,
+  .serif {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', sans-serif;
+  }
+  /* The one exception: the name under the mark on Início is the logotype. */
+  .brand-name {
+    font-family: 'Newsreader', serif;
+  }
+  /* Figures carry the weight instead of the serif now. */
+  .hero-card .amount {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  /* ── Large title ──────────────────────────────────────────────── */
+  .app-header {
+    padding: 10px 20px 6px;
+    align-items: flex-start;
+  }
+  .app-header h1 {
+    font-size: 31px;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.1;
+  }
+  .app-header .subtitle {
+    font-size: 12.5px;
+    margin-top: 1px;
+  }
+
+  /* ── Grouped inset lists ──────────────────────────────────────── */
+  .scroll-area {
+    padding: 2px 16px 150px;
+  }
+  .page,
+  .page.narrow,
+  .page.wide {
+    gap: 18px;
+  }
+  .list {
+    border: none;
+    border-radius: var(--radius-md);
+    gap: 0;
+    background: var(--surface);
+  }
+  .list > * + * {
+    border-top: 0.5px solid var(--divider);
+  }
+  .list-row {
+    padding: 11px 15px;
+    background: var(--surface);
+  }
+  .card {
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 15px 16px;
+  }
+  .empty-state {
+    border-style: solid;
+    border-color: var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 22px 20px;
+  }
+
+  /* Group header: the small grey label that sits above an inset list. */
+  .section-title {
+    font-size: 12.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding-left: 2px;
+  }
+  .section-hint {
+    padding-left: 2px;
+  }
+  .eyebrow {
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding-left: 2px;
+    margin-bottom: 8px;
+  }
+
+  /* ── Action rows: icon tile, label, chevron ───────────────────── */
+  .action-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .action-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+  }
+  .action-grid > .action-card + .action-card {
+    border-top: 0.5px solid var(--divider);
+  }
+  .action-card.primary {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: none;
+  }
+  .action-card .title {
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .action-card .desc,
+  .action-card.primary .desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .action-card .cell-icon {
+    display: grid;
+  }
+  .action-card .cell-chevron {
+    display: block;
+  }
+  .action-card:hover {
+    transform: none;
+    box-shadow: none;
+    border: none;
+  }
+  .action-card:active {
+    transform: none;
+    background: var(--surface-2);
+  }
+
+  /* Shown only here — on desktop the cards carry their own visual weight. */
+  .cell-icon {
+    display: none;
+    width: 29px;
+    height: 29px;
+    flex: none;
+    border-radius: 7px;
+    place-items: center;
+    background: var(--accent);
+    color: #fff;
+  }
+  .cell-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .cell-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .cell-chevron {
+    display: none;
+    flex: none;
+    color: var(--text-soft);
+  }
+
+  /* ── Translucent tab bar ──────────────────────────────────────── */
+  .app-nav {
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-top: 0.5px solid var(--divider);
+    box-shadow: none;
+  }
+  .nav-btn.active {
+    background: transparent;
+  }
+  .nav-btn .nav-bar {
+    display: none;
+  }
+  /* The mark belongs on the login screen and the home header, not competing
+     for room with the tabs. */
+  .nav-brand {
+    display: none;
+  }
+  /* Dark mode is the one setting worth reaching without scrolling the tab
+     strip, so it floats where iOS puts a header action. */
+  .app-nav .theme-toggle {
+    position: fixed;
+    top: calc(8px + env(safe-area-inset-top));
+    right: 14px;
+    z-index: 30;
+    width: 36px;
+    height: 36px;
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  }
+
+  /* ── Sheet-style modals ───────────────────────────────────────── */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal {
+    border-radius: 14px 14px 0 0;
+    max-height: 90vh;
+    width: 100%;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* Inputs get the iOS field look: filled, not outlined. */
+  .input,
+  select.input,
+  textarea.input {
+    border-radius: 10px;
+    font-size: 16px; /* under 16px iOS Safari zooms the page on focus */
   }
 }

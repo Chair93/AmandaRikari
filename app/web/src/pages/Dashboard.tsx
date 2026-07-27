@@ -131,7 +131,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="section-title">Precisa de atenção</div>
                 {data.alerts.map((a) => (
-                  <button key={a.id} className={'pill' + (a.overdue ? ' expense' : '')} style={{ justifyContent: 'flex-start', textAlign: 'left', padding: '11px 16px' }} onClick={() => navigate(a.kind === 'bill' ? '/contas' : a.kind === 'stock' ? '/estoque' : '/clientes')}>
+                  <button key={a.id} className={'pill block' + (a.overdue ? ' expense' : '')} onClick={() => navigate(a.kind === 'bill' ? '/contas' : a.kind === 'stock' ? '/estoque' : '/clientes')}>
                     {a.text}
                   </button>
                 ))}

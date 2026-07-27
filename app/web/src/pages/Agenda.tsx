@@ -138,7 +138,7 @@ export default function Agenda() {
                 </div>
 
                 {appointments.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--divider)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div className="list">
                     {appointments.map((a) => {
                       const zap = whatsAppReminder(a);
                       return (

@@ -48,7 +48,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <nav className="app-nav">
-        <div style={{ width: 54, height: 44, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+        <div className="nav-brand">
           <img src="/ar-mark-t.png" alt="AR" style={{ width: '100%', height: 'auto' }} />
         </div>
         {NAV.map((group) => (
