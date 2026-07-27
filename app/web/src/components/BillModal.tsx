@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Modal from './Modal';
 import { useCategories, useClients, useSaveBill } from '../api/hooks';
 import type { Bill } from '../api/types';
-import { numOr0, todayStr } from '../format';
+import { parseNumberBR, todayStr } from '../format';
 
 export default function BillModal({
   onClose,
@@ -32,8 +32,13 @@ export default function BillModal({
   const catOptions = categories.filter((c) => c.type === (kind === 'pagar' ? 'despesa' : 'receita'));
 
   async function onSave() {
-    if (!desc.trim() || numOr0(amount) <= 0) {
-      setError('Preencha a descrição e o valor.');
+    if (!desc.trim()) {
+      setError('Preencha a descrição.');
+      return;
+    }
+    const parsedAmount = parseNumberBR(amount);
+    if (parsedAmount == null || parsedAmount <= 0) {
+      setError(amount.trim() === '' ? 'Preencha o valor.' : `Valor inválido: "${amount}". Use apenas números, ex: 1.500,00`);
       return;
     }
     try {
@@ -41,7 +46,7 @@ export default function BillModal({
         id: editingBill?.id,
         kind,
         desc: desc.trim(),
-        amount: numOr0(amount),
+        amount: parsedAmount,
         due,
         categoryId: categoryId || null,
         clientId: clientId || null,

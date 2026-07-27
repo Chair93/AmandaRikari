@@ -140,7 +140,7 @@ export default function ServiceModal({ onClose, editingService }: { onClose: () 
               </select>
               <input className="input" style={{ width: 56, flex: 'none', padding: '8px 10px', fontSize: 12.5 }} inputMode="decimal" placeholder="0" value={it.qty} onChange={(e) => updateItem(it.id, { qty: e.target.value })} />
               <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 'none', width: 26 }}>{itemQtyUnit(it)}</span>
-              <button className="icon-btn" onClick={() => removeItem(it.id)}>
+              <button className="icon-btn" aria-label="Remover item da ficha" onClick={() => removeItem(it.id)}>
                 ×
               </button>
             </div>

@@ -67,7 +67,7 @@ export default function Agenda() {
       <div className="scroll-area">
         <div className="page wide">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button className="icon-btn" onClick={() => setSelectedDate((d) => addDays(d, -7))}>
+            <button className="icon-btn" aria-label="Semana anterior" onClick={() => setSelectedDate((d) => addDays(d, -7))}>
               <IconChevronLeft />
             </button>
             <div style={{ display: 'flex', gap: 6, flex: 1 }}>
@@ -113,7 +113,7 @@ export default function Agenda() {
                 );
               })}
             </div>
-            <button className="icon-btn" onClick={() => setSelectedDate((d) => addDays(d, 7))}>
+            <button className="icon-btn" aria-label="Próxima semana" onClick={() => setSelectedDate((d) => addDays(d, 7))}>
               <IconChevronRight />
             </button>
             <button className="pill sm" onClick={() => setSelectedDate(today)}>
@@ -160,7 +160,7 @@ export default function Agenda() {
                                 <button className="pill ghost sm" onClick={() => setModal({ editing: a })}>
                                   editar
                                 </button>
-                                <button className="icon-btn" onClick={() => onCancel(a)}>
+                                <button className="icon-btn" aria-label="Cancelar agendamento" onClick={() => onCancel(a)}>
                                   ×
                                 </button>
                               </>

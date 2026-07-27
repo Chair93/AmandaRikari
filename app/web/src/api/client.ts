@@ -8,12 +8,33 @@ export class ApiError extends Error {
   }
 }
 
+/** Notified when the server says the session is gone, so the app can send the
+ *  user back to login instead of silently rendering empty screens. */
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
+
+/** Endpoints where a 401 is an expected answer rather than an expired session
+ *  — bouncing the user to login from these would be wrong. */
+const AUTH_PROBE_PATHS = ['/auth/me', '/auth/login', '/auth/register'];
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      credentials: 'include',
+      headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+      ...options,
+    });
+  } catch {
+    // fetch only rejects on network-level failure, which reads very
+    // differently to a user than a server error.
+    throw new ApiError('Sem conexão com o servidor. Verifique sua internet e tente de novo.', 0);
+  }
+
+  if (res.status === 401 && !AUTH_PROBE_PATHS.some((p) => path.startsWith(p))) onUnauthorized?.();
+
   if (res.status === 204) return undefined as T;
   const isJson = res.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await res.json() : await res.text();

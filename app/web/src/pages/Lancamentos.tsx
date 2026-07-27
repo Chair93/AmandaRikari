@@ -76,7 +76,7 @@ export default function Lancamentos() {
                               {hasMargem && <div style={{ fontSize: 11, color: moneyColor(margem) }}>margem {fmtBRL(margem)}</div>}
                             </div>
                             {isOwner && (
-                              <button className="icon-btn" onClick={(e) => onDelete(tx.id, e)}>
+                              <button className="icon-btn" aria-label="Excluir lançamento" onClick={(e) => onDelete(tx.id, e)}>
                                 ×
                               </button>
                             )}
@@ -93,7 +93,7 @@ export default function Lancamentos() {
           )}
         </div>
         {isOwner && (
-          <button className="fab" onClick={() => setTxModal({ open: true })}>
+          <button className="fab" aria-label="Novo lançamento" onClick={() => setTxModal({ open: true })}>
             +
           </button>
         )}

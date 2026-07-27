@@ -26,11 +26,11 @@ export default function PeriodNav({ mode, onModeChange, monthOffset, onMonthOffs
       </div>
       {mode === 'month' ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '7px 8px' }}>
-          <button className="icon-btn" onClick={() => onMonthOffsetChange(monthOffset - 1)}>
+          <button className="icon-btn" aria-label="Mês anterior" onClick={() => onMonthOffsetChange(monthOffset - 1)}>
             <IconChevronLeft />
           </button>
           <span style={{ fontSize: 13, fontWeight: 600, minWidth: 110, textAlign: 'center', textTransform: 'capitalize' }}>{monthLabel}</span>
-          <button className="icon-btn" onClick={() => onMonthOffsetChange(monthOffset + 1)}>
+          <button className="icon-btn" aria-label="Próximo mês" onClick={() => onMonthOffsetChange(monthOffset + 1)}>
             <IconChevronRight />
           </button>
           {monthOffset !== 0 && (
@@ -41,11 +41,11 @@ export default function PeriodNav({ mode, onModeChange, monthOffset, onMonthOffs
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '7px 8px' }}>
-          <button className="icon-btn" onClick={() => onYearOffsetChange(yearOffset - 1)}>
+          <button className="icon-btn" aria-label="Ano anterior" onClick={() => onYearOffsetChange(yearOffset - 1)}>
             <IconChevronLeft />
           </button>
           <span style={{ fontSize: 13, fontWeight: 600, minWidth: 50, textAlign: 'center' }}>{yearLabel}</span>
-          <button className="icon-btn" onClick={() => onYearOffsetChange(yearOffset + 1)}>
+          <button className="icon-btn" aria-label="Próximo ano" onClick={() => onYearOffsetChange(yearOffset + 1)}>
             <IconChevronRight />
           </button>
         </div>

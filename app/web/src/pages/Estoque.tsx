@@ -2,10 +2,11 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { useDeleteEquipment, useEquipment, useEquipmentBaixa, useEquipmentComprar, useProductEntrada, useProducts, useProductVender } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtBRL, fmtDateBR, moneyColor, numOr0, UNIT_LABEL } from '../format';
+import { fmtBRL, fmtDateBR, moneyColor, UNIT_LABEL } from '../format';
 import type { Equipment, Product } from '../api/types';
 import ProductModal from '../components/ProductModal';
 import EquipmentModal from '../components/EquipmentModal';
+import PromptModal from '../components/PromptModal';
 
 function daysUntil(iso: string): number {
   const DAY = 86400000;
@@ -26,37 +27,10 @@ function EstoqueRow({ p }: { p: Product }) {
   const entrada = useProductEntrada();
   const vender = useProductVender();
   const [editing, setEditing] = useState(false);
+  const [prompt, setPrompt] = useState<'entrada' | 'venda' | null>(null);
   const custo = p.avgCost || p.packageCost;
   const valor = p.stock * p.packageCost;
   const margemUnit = p.salePrice - custo;
-
-  async function onEntrada() {
-    const qtdStr = window.prompt(`Quantos pacotes de "${p.name}" entraram no estoque?`, '1');
-    if (!qtdStr) return;
-    const qty = numOr0(qtdStr);
-    if (qty <= 0) return;
-    const precoStr = window.prompt('Quanto custou cada pacote agora? (R$)', String(p.packageCost).replace('.', ','));
-    const unitCost = numOr0(precoStr) || p.packageCost;
-    const lancar = window.confirm(`Lançar também a compra de ${fmtBRL(qty * unitCost)} como saída no caixa?`);
-    await entrada.mutateAsync({ id: p.id, qty, unitCost, lancarNoCaixa: lancar });
-  }
-
-  async function onVender() {
-    if (p.stock <= 0) {
-      window.alert(`Sem estoque de "${p.name}".`);
-      return;
-    }
-    const qtdStr = window.prompt(`Quantas unidades de "${p.name}" foram vendidas? (em estoque: ${p.stock})`, '1');
-    if (!qtdStr) return;
-    const qty = Math.min(numOr0(qtdStr), p.stock);
-    if (qty <= 0) return;
-    const precoPadrao = p.salePrice || p.packageCost;
-    const precoStr = window.prompt('Preço de venda por unidade (R$)', String(precoPadrao).replace('.', ','));
-    if (precoStr === null) return;
-    const unitPrice = numOr0(precoStr) || precoPadrao;
-    if (!window.confirm(`Vender ${qty} × ${p.name} por ${fmtBRL(qty * unitPrice)}?\nMargem: ${fmtBRL(qty * (unitPrice - custo))}`)) return;
-    await vender.mutateAsync({ id: p.id, qty, unitPrice });
-  }
 
   return (
     <div className="list-row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
@@ -79,10 +53,10 @@ function EstoqueRow({ p }: { p: Product }) {
         )}
         {isOwner && (
           <>
-            <button className="pill sm" onClick={onEntrada}>
+            <button className="pill sm" onClick={() => setPrompt('entrada')}>
               + Entrada
             </button>
-            <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={onVender}>
+            <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
               Vender
             </button>
             <button className="pill ghost sm" onClick={() => setEditing(true)}>
@@ -92,6 +66,44 @@ function EstoqueRow({ p }: { p: Product }) {
         )}
       </div>
       {editing && <ProductModal onClose={() => setEditing(false)} editingProduct={p} />}
+
+      {prompt === 'entrada' && (
+        <PromptModal
+          title={`Entrada de estoque — ${p.name}`}
+          description="Registra a chegada de novos pacotes e recalcula o custo médio."
+          fields={[
+            { key: 'qty', label: 'Quantos pacotes entraram', defaultValue: '1', kind: 'qty' },
+            { key: 'unitCost', label: 'Custo de cada pacote (R$)', defaultValue: String(p.packageCost).replace('.', ','), kind: 'money' },
+          ]}
+          checkboxLabel="Lançar também como saída no caixa (compra)"
+          checkboxDefault
+          confirmLabel="Dar entrada"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v, lancarNoCaixa) => {
+            await entrada.mutateAsync({ id: p.id, qty: v.qty as number, unitCost: v.unitCost as number, lancarNoCaixa });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'venda' && (
+        <PromptModal
+          title={`Vender — ${p.name}`}
+          description={`Em estoque: ${p.stock} un · custo médio ${fmtBRL(custo)}`}
+          fields={[
+            { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty', hint: `Máximo ${p.stock}` },
+            { key: 'unitPrice', label: 'Preço de venda por unidade (R$)', defaultValue: String(p.salePrice || p.packageCost).replace('.', ','), kind: 'money' },
+          ]}
+          confirmLabel="Registrar venda"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v) => {
+            const qty = v.qty as number;
+            if (qty > p.stock) throw new Error(`Você só tem ${p.stock} un em estoque.`);
+            await vender.mutateAsync({ id: p.id, qty, unitPrice: v.unitPrice as number });
+            setPrompt(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -102,6 +114,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const baixa = useEquipmentBaixa();
   const del = useDeleteEquipment();
   const [editing, setEditing] = useState(false);
+  const [prompt, setPrompt] = useState<'compra' | 'baixa' | null>(null);
   const isMaq = (eq.kind || (eq.kwh > 0 ? 'maquina' : 'utensilio')) === 'maquina';
   const q = eq.qty || 1;
   const usos = eq.usos || 0;
@@ -111,29 +124,6 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const bruto = eq.cost * q;
   const residual = Math.max(0, bruto - (eq.depreciacaoAcumulada || 0));
   const perUse = eq.usefulUses > 0 ? eq.cost / eq.usefulUses : 0;
-
-  async function onComprar() {
-    const qtdStr = window.prompt(`Quantas unidades de "${eq.name}" você comprou?`, '1');
-    if (!qtdStr) return;
-    const qty = numOr0(qtdStr);
-    if (qty <= 0) return;
-    const precoStr = window.prompt('Preço pago por unidade (R$)', String(eq.cost).replace('.', ','));
-    if (precoStr === null) return;
-    const unitCost = numOr0(precoStr) || eq.cost;
-    if (!window.confirm(`Comprar ${qty} × ${eq.name} por ${fmtBRL(qty * unitCost)}?\n\nSai do caixa e entra como ativo (não é despesa no Resultado).`)) return;
-    await comprar.mutateAsync({ id: eq.id, qty, unitCost });
-  }
-
-  async function onBaixa() {
-    const qtdStr = window.prompt(`Dar baixa em quantas unidades de "${eq.name}"? (você tem ${q})`, String(q));
-    if (!qtdStr) return;
-    const qty = Math.min(numOr0(qtdStr), q);
-    if (qty <= 0) return;
-    const resid = q > 0 ? residual * (qty / q) : 0;
-    const msg = resid > 0.005 ? `Dar baixa em ${qty} × ${eq.name}?\n\nAinda restam ${fmtBRL(resid)} não depreciados — vira perda no Balanço.` : `Dar baixa em ${qty} × ${eq.name}? Já está 100% depreciado.`;
-    if (!window.confirm(msg)) return;
-    await baixa.mutateAsync({ id: eq.id, qty });
-  }
 
   return (
     <div className="list-row" style={{ alignItems: 'flex-start' }}>
@@ -162,23 +152,60 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
       </div>
       {isOwner && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
-          <button className="pill sm" style={{ color: 'var(--income-text)', background: 'var(--income-soft)' }} onClick={onComprar}>
+          <button className="pill sm" style={{ color: 'var(--income-text)', background: 'var(--income-soft)' }} onClick={() => setPrompt('compra')}>
             + Compra
           </button>
           {q > 0 && (
-            <button className="pill sm expense" onClick={onBaixa}>
+            <button className="pill sm expense" onClick={() => setPrompt('baixa')}>
               Dar baixa
             </button>
           )}
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             Editar
           </button>
-          <button className="icon-btn" onClick={() => del.mutate(eq.id)}>
+          <button className="icon-btn" aria-label={`Excluir ${eq.name}`} onClick={() => del.mutate(eq.id)}>
             ×
           </button>
         </div>
       )}
       {editing && <EquipmentModal onClose={() => setEditing(false)} editingEquipment={eq} />}
+
+      {prompt === 'compra' && (
+        <PromptModal
+          title={`Comprar — ${eq.name}`}
+          description="Sai do caixa e entra como ativo (não é despesa no Resultado)."
+          fields={[
+            { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty' },
+            { key: 'unitCost', label: 'Preço pago por unidade (R$)', defaultValue: String(eq.cost).replace('.', ','), kind: 'money' },
+          ]}
+          confirmLabel="Registrar compra"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v) => {
+            await comprar.mutateAsync({ id: eq.id, qty: v.qty as number, unitCost: v.unitCost as number });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'baixa' && (
+        <PromptModal
+          title={`Dar baixa — ${eq.name}`}
+          description={
+            residual > 0.005
+              ? `Você tem ${q} ${q === 1 ? 'unidade' : 'unidades'}. Ainda restam ${fmtBRL(residual)} não depreciados — a parte baixada vira perda no Balanço.`
+              : `Você tem ${q} ${q === 1 ? 'unidade' : 'unidades'}, já 100% depreciadas.`
+          }
+          fields={[{ key: 'qty', label: 'Quantas unidades baixar', defaultValue: String(q), kind: 'qty', hint: `Máximo ${q}` }]}
+          confirmLabel="Dar baixa"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v) => {
+            const qty = v.qty as number;
+            if (qty > q) throw new Error(`Você só tem ${q} ${q === 1 ? 'unidade' : 'unidades'}.`);
+            await baixa.mutateAsync({ id: eq.id, qty });
+            setPrompt(null);
+          }}
+        />
+      )}
     </div>
   );
 }

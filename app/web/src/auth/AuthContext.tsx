@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { api, ApiError } from '../api/client';
+import { api, ApiError, setUnauthorizedHandler } from '../api/client';
 import type { User } from '../api/types';
 
 interface AuthState {
@@ -27,6 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
+  }, []);
+
+  // A 401 on any data request means the cookie expired or the account was
+  // removed from the team — drop straight to the login screen rather than
+  // leaving the user staring at a page that silently refuses to load.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   async function login(email: string, password: string) {

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { CATEGORY_COLORS, fmtBRL, fmtDateBR, monthShortLabel } from '../format';
 import ClientModal from '../components/ClientModal';
 import ClientDetailModal from '../components/ClientDetailModal';
+import QueryState from '../components/QueryState';
 import type { ClienteRow } from '../api/types';
 
 function statusFor(row: ClienteRow) {
@@ -16,7 +17,7 @@ function statusFor(row: ClienteRow) {
 }
 
 export default function Clientes() {
-  const { data } = useClientesReport();
+  const { data, isLoading, error, refetch } = useClientesReport();
   const { isOwner } = useAuth();
   const del = useDeleteClient();
   const [clientModal, setClientModal] = useState<{ open: boolean; editing?: ClienteRow } | null>(null);
@@ -28,7 +29,19 @@ export default function Clientes() {
     del.mutate(row.id);
   }
 
-  if (!data) return null;
+  if (isLoading || error || !data) {
+    return (
+      <>
+        <PageHeader title="Clientes" subtitle="Clientes cadastrados e seus totais" />
+        <div className="scroll-area">
+          <QueryState isLoading={isLoading} error={error} onRetry={refetch}>
+            <div />
+          </QueryState>
+        </div>
+      </>
+    );
+  }
+
   const maxGasto = Math.max(1, ...data.topClientes.map((c) => c.gasto));
   const maxNovos = Math.max(1, ...data.novosPorMes.map((m) => m.count));
 
@@ -142,7 +155,7 @@ export default function Clientes() {
                               <button className="pill ghost sm" onClick={() => setClientModal({ open: true, editing: c })}>
                                 Editar
                               </button>
-                              <button className="icon-btn" onClick={(e) => onDelete(c, e)}>
+                              <button className="icon-btn" aria-label="Excluir cliente" onClick={(e) => onDelete(c, e)}>
                                 ×
                               </button>
                             </div>
@@ -197,7 +210,7 @@ export default function Clientes() {
           )}
         </div>
         {isOwner && (
-          <button className="fab" onClick={() => setClientModal({ open: true })}>
+          <button className="fab" aria-label="Novo cliente" onClick={() => setClientModal({ open: true })}>
             +
           </button>
         )}

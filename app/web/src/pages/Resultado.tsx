@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import PeriodNav, { type PeriodMode } from '../components/PeriodNav';
 import { useResultadoReport } from '../api/hooks';
+import QueryState from '../components/QueryState';
 import { fmtBRL, maskable, monthLabelFromOffset, monthShortLabel, moneyColor } from '../format';
 
 export default function Resultado() {
@@ -9,11 +10,23 @@ export default function Resultado() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [yearOffset, setYearOffset] = useState(0);
   const [showMargin, setShowMargin] = useState(false);
-  const { data } = useResultadoReport(mode, monthOffset, yearOffset);
+  const { data, isLoading, error, refetch } = useResultadoReport(mode, monthOffset, yearOffset);
   const mask = (label: string) => maskable(label, showMargin);
   const year = new Date().getFullYear() + yearOffset;
 
-  if (!data) return null;
+  if (isLoading || error || !data) {
+    return (
+      <>
+        <PageHeader title="Relatórios" subtitle="DRE, balanço patrimonial e arquivos para o contador" />
+        <div className="scroll-area">
+          <QueryState isLoading={isLoading} error={error} onRetry={refetch}>
+            <div />
+          </QueryState>
+        </div>
+      </>
+    );
+  }
+
   const { dre, balance } = data;
   const receitaTotal = dre.receita;
   const shareVar = receitaTotal > 0 ? Math.max(0, Math.round(((dre.custoVar + dre.cmv) / receitaTotal) * 100)) : 0;

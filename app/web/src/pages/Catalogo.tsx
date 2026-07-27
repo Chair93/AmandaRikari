@@ -47,7 +47,7 @@ function ServiceRow({ sv }: { sv: Service }) {
             <button className="pill ghost sm" onClick={() => setEditing(true)}>
               Editar
             </button>
-            <button className="icon-btn" onClick={() => del.mutate(sv.id)}>
+            <button className="icon-btn" aria-label="Excluir serviço" onClick={() => del.mutate(sv.id)}>
               ×
             </button>
           </>

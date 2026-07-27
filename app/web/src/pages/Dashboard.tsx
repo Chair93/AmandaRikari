@@ -6,6 +6,8 @@ import { useDashboardReport, useDashboardYearReport, useSacarProlabore } from '.
 import { useAuth } from '../auth/AuthContext';
 import { CATEGORY_COLORS, fmtBRL, maskable, monthLabelFromOffset, moneyColor } from '../format';
 import TransactionModal from '../components/TransactionModal';
+import QueryState from '../components/QueryState';
+import PromptModal from '../components/PromptModal';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -15,26 +17,17 @@ export default function Dashboard() {
   const [yearOffset, setYearOffset] = useState(0);
   const [showMargin, setShowMargin] = useState(false);
   const [txModal, setTxModal] = useState<{ open: boolean; editId?: string }>({ open: false });
+  const [prolaboreOpen, setProlaboreOpen] = useState(false);
 
-  const { data } = useDashboardReport(monthOffset);
-  const { data: yearData } = useDashboardYearReport(yearOffset);
+  const { data, isLoading, error, refetch } = useDashboardReport(monthOffset);
+  const { data: yearData, isLoading: yearLoading, error: yearError, refetch: refetchYear } = useDashboardYearReport(yearOffset);
   const sacar = useSacarProlabore();
+  const active = mode === 'month' ? { isLoading, error, refetch } : { isLoading: yearLoading, error: yearError, refetch: refetchYear };
 
   const mask = (label: string) => maskable(label, showMargin);
   const year = new Date().getFullYear() + yearOffset;
 
-  async function onSacarProlabore() {
-    if (!data) return;
-    const sugerido = Math.max(0, Math.round((data.prolabore.amount - data.prolabore.retirado) * 100) / 100);
-    const input = window.prompt(
-      `Quanto retirar de pró-labore?\n\nLucro dos atendimentos no mês: ${fmtBRL(data.prolabore.base)}\nSugerido (${data.prolabore.mode === 'fixo' ? 'valor fixo' : data.prolabore.pct + '% do lucro'}): ${fmtBRL(data.prolabore.amount)}\nJá retirado no mês: ${fmtBRL(data.prolabore.retirado)}`,
-      String(sugerido).replace('.', ',')
-    );
-    if (input === null) return;
-    const amount = parseFloat(input.replace(',', '.'));
-    if (!amount || amount <= 0) return;
-    await sacar.mutateAsync(amount);
-  }
+  const sugeridoProlabore = data ? Math.max(0, Math.round((data.prolabore.amount - data.prolabore.retirado) * 100) / 100) : 0;
 
   return (
     <>
@@ -60,6 +53,11 @@ export default function Dashboard() {
         }
       />
       <div className="scroll-area">
+        {(active.isLoading || active.error) && (
+          <QueryState isLoading={active.isLoading} error={active.error} onRetry={active.refetch}>
+            <div />
+          </QueryState>
+        )}
         {mode === 'month' && data && (
           <div className="page">
             <div className="info-banner" style={{ background: 'var(--banner-green-bg)', border: '1px solid var(--banner-green-border)', color: 'var(--banner-green-text)' }}>
@@ -118,7 +116,7 @@ export default function Dashboard() {
                   </div>
                   {isOwner && (
                     <button
-                      onClick={onSacarProlabore}
+                      onClick={() => setProlaboreOpen(true)}
                       style={{ all: 'unset', cursor: 'pointer', marginTop: 12, alignSelf: 'flex-start', padding: '9px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, background: 'rgba(255,255,255,0.18)', color: 'white' }}
                     >
                       Retirar pró-labore — você confirma o valor
@@ -276,13 +274,26 @@ export default function Dashboard() {
         )}
 
         {isOwner && (
-          <button className="fab" onClick={() => setTxModal({ open: true })}>
+          <button className="fab" aria-label="Novo lançamento" onClick={() => setTxModal({ open: true })}>
             <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
           </button>
         )}
       </div>
 
       {txModal.open && <TransactionModal onClose={() => setTxModal({ open: false })} editingTxId={txModal.editId} />}
+      {prolaboreOpen && data && (
+        <PromptModal
+          title="Retirar pró-labore"
+          description={`Lucro dos atendimentos no mês: ${fmtBRL(data.prolabore.base)} · Sugerido (${data.prolabore.mode === 'fixo' ? 'valor fixo' : data.prolabore.pct + '% do lucro'}): ${fmtBRL(data.prolabore.amount)} · Já retirado: ${fmtBRL(data.prolabore.retirado)}`}
+          fields={[{ key: 'amount', label: 'Quanto retirar (R$)', defaultValue: String(sugeridoProlabore).replace('.', ','), kind: 'money' }]}
+          confirmLabel="Retirar"
+          onCancel={() => setProlaboreOpen(false)}
+          onConfirm={async (v) => {
+            await sacar.mutateAsync(v.amount as number);
+            setProlaboreOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

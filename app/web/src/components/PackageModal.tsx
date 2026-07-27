@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Modal from './Modal';
 import { useClients, useSavePackage, useServices } from '../api/hooks';
-import { fmtBRL, numOr0, PAYMENT_LABEL, todayStr } from '../format';
+import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr } from '../format';
 
 export default function PackageModal({ onClose, defaultClientId }: { onClose: () => void; defaultClientId?: string }) {
   const { data: clients = [] } = useClients();
@@ -33,8 +33,13 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
   }
 
   async function onSave() {
-    if (!clientId || n <= 0 || v <= 0) {
-      setError('Escolha o cliente e preencha sessões e valor.');
+    if (!clientId || n <= 0) {
+      setError('Escolha o cliente e o número de sessões.');
+      return;
+    }
+    const parsedAmount = parseNumberBR(amount);
+    if (parsedAmount == null || parsedAmount <= 0) {
+      setError(amount.trim() === '' ? 'Preencha o valor total.' : `Valor inválido: "${amount}". Use apenas números, ex: 1.500,00`);
       return;
     }
     try {
@@ -42,7 +47,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         clientId,
         serviceId: serviceId || null,
         sessions: n,
-        amount: v,
+        amount: parsedAmount,
         payment,
         mode,
         parcelas: mode === 'prazo' ? Math.max(1, Math.round(numOr0(parcelas))) : undefined,

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import Modal from './Modal';
 import { useClientDetail, useDeletePackage, useSettleBill, useUsePackageSession } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtBRL, fmtDateBR, numOr0 } from '../format';
+import { fmtBRL, fmtDateBR } from '../format';
 import PackageModal from './PackageModal';
 import BillModal from './BillModal';
 import ReceiptModal from './ReceiptModal';
 import TransactionModal from './TransactionModal';
+import PromptModal from './PromptModal';
 import type { Bill } from '../api/types';
 
 export default function ClientDetailModal({ clientId, onClose }: { clientId: string; onClose: () => void }) {
@@ -19,6 +20,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
     | { kind: 'package' }
     | { kind: 'bill' }
     | { kind: 'editBill'; bill: Bill }
+    | { kind: 'settleBill'; bill: Bill }
     | { kind: 'receipt'; date: string; serviceName: string; amount: number; payment: string | null }
     | { kind: 'editTx'; id: string }
     | null
@@ -27,13 +29,6 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   if (!data) return null;
   const { client, pago, aberto, visitas, ticketMedio, bills, history, packages } = data;
 
-  async function onSettle(b: Bill) {
-    const input = window.prompt(`${b.kind === 'pagar' ? 'Pagar' : 'Receber'} "${b.desc}" — valor (R$):`, String(b.amount).replace('.', ','));
-    if (input === null) return;
-    const amount = numOr0(input);
-    if (amount <= 0) return;
-    await settle.mutateAsync({ id: b.id, amount });
-  }
 
   return (
     <>
@@ -80,7 +75,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
                       </button>
                     )}
                     {isOwner && (
-                      <button className="icon-btn" onClick={() => deletePkg.mutate(p.id)}>
+                      <button className="icon-btn" aria-label="Excluir pacote" onClick={() => deletePkg.mutate(p.id)}>
                         ×
                       </button>
                     )}
@@ -103,7 +98,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(b.amount)}</span>
                   {isOwner && !b.settled && (
-                    <button className="pill sm income" onClick={() => onSettle(b)}>
+                    <button className="pill sm income" onClick={() => setSubModal({ kind: 'settleBill', bill: b })}>
                       Recebi
                     </button>
                   )}
@@ -159,6 +154,19 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
       {subModal?.kind === 'package' && <PackageModal onClose={() => setSubModal(null)} defaultClientId={clientId} />}
       {subModal?.kind === 'bill' && <BillModal onClose={() => setSubModal(null)} defaultKind="receber" defaultClientId={clientId} />}
       {subModal?.kind === 'editBill' && <BillModal onClose={() => setSubModal(null)} editingBill={subModal.bill} />}
+      {subModal?.kind === 'settleBill' && (
+        <PromptModal
+          title={`${subModal.bill.kind === 'pagar' ? 'Dar baixa' : 'Recebi'} — ${subModal.bill.desc}`}
+          description={`Vencimento ${fmtDateBR(subModal.bill.due)}. Ajuste o valor se pagou/recebeu diferente do combinado.`}
+          fields={[{ key: 'amount', label: 'Valor (R$)', defaultValue: String(subModal.bill.amount).replace('.', ','), kind: 'money' }]}
+          confirmLabel="Confirmar"
+          onCancel={() => setSubModal(null)}
+          onConfirm={async (v) => {
+            await settle.mutateAsync({ id: (subModal as { bill: Bill }).bill.id, amount: v.amount as number });
+            setSubModal(null);
+          }}
+        />
+      )}
       {subModal?.kind === 'editTx' && <TransactionModal onClose={() => setSubModal(null)} editingTxId={subModal.id} />}
       {subModal?.kind === 'receipt' && (
         <ReceiptModal onClose={() => setSubModal(null)} clientName={client.name} clientPhone={client.phone} date={subModal.date} serviceName={subModal.serviceName} amount={subModal.amount} payment={subModal.payment} />

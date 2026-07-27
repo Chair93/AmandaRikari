@@ -112,7 +112,7 @@ export default function Categorias() {
                       <button className="pill ghost sm" onClick={() => setModal({ open: true, editing: c })}>
                         Editar
                       </button>
-                      <button className="icon-btn" onClick={() => onDelete(c)}>
+                      <button className="icon-btn" aria-label="Excluir categoria" onClick={() => onDelete(c)}>
                         ×
                       </button>
                     </>
@@ -133,7 +133,7 @@ export default function Categorias() {
                       <button className="pill ghost sm" onClick={() => setModal({ open: true, editing: c })}>
                         Editar
                       </button>
-                      <button className="icon-btn" onClick={() => onDelete(c)}>
+                      <button className="icon-btn" aria-label="Excluir categoria" onClick={() => onDelete(c)}>
                         ×
                       </button>
                     </>
@@ -144,7 +144,7 @@ export default function Categorias() {
           </div>
         </div>
         {isOwner && (
-          <button className="fab" onClick={() => setModal({ open: true })}>
+          <button className="fab" aria-label="Nova categoria" onClick={() => setModal({ open: true })}>
             +
           </button>
         )}

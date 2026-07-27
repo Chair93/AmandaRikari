@@ -6,6 +6,8 @@ import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, fmtDateBR, numOr0 } from '../format';
 import BillModal from '../components/BillModal';
 import Modal from '../components/Modal';
+import QueryState from '../components/QueryState';
+import PromptModal from '../components/PromptModal';
 import type { Bill } from '../api/types';
 
 function daysUntil(due: string): number {
@@ -19,17 +21,10 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
   const { isOwner } = useAuth();
   const settle = useSettleBill();
   const [editing, setEditing] = useState(false);
+  const [settling, setSettling] = useState(false);
   const client = clients.find((c) => c.id === bill.clientId);
   const dias = daysUntil(bill.due);
   const venceLabel = dias === 0 ? 'vence hoje' : dias > 0 ? `em ${dias} dia${dias === 1 ? '' : 's'}` : `atrasada ${-dias} dia${dias === -1 ? '' : 's'}`;
-
-  async function onSettle() {
-    const input = window.prompt(`${kind === 'pagar' ? 'Pagar' : 'Receber'} "${bill.desc}" — valor (R$):`, String(bill.amount).replace('.', ','));
-    if (input === null) return;
-    const amount = numOr0(input);
-    if (amount <= 0) return;
-    await settle.mutateAsync({ id: bill.id, amount });
-  }
 
   return (
     <div className="list-row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
@@ -43,7 +38,7 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
         <span className={'badge' + (dias < 0 ? ' expense' : '')}>{dias < 0 ? 'Atrasada' : 'Em aberto'}</span>
         <span style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtBRL(bill.amount)}</span>
         {isOwner && (
-          <button className={'pill sm ' + (kind === 'pagar' ? 'expense' : 'income')} onClick={onSettle}>
+          <button className={'pill sm ' + (kind === 'pagar' ? 'expense' : 'income')} onClick={() => setSettling(true)}>
             {kind === 'pagar' ? 'Dar baixa' : 'Recebi'}
           </button>
         )}
@@ -54,6 +49,19 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
         )}
       </div>
       {editing && <BillModal onClose={() => setEditing(false)} editingBill={bill} />}
+      {settling && (
+        <PromptModal
+          title={`${kind === 'pagar' ? 'Dar baixa' : 'Recebi'} — ${bill.desc}`}
+          description={`Vencimento ${fmtDateBR(bill.due)}. Ajuste o valor se pagou/recebeu diferente do combinado.`}
+          fields={[{ key: 'amount', label: 'Valor (R$)', defaultValue: String(bill.amount).replace('.', ','), kind: 'money' }]}
+          confirmLabel="Confirmar"
+          onCancel={() => setSettling(false)}
+          onConfirm={async (v) => {
+            await settle.mutateAsync({ id: bill.id, amount: v.amount as number });
+            setSettling(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -193,7 +201,7 @@ function RecurringSection() {
                   <button className="pill ghost sm" onClick={() => openEdit(r)}>
                     editar
                   </button>
-                  <button className="icon-btn" onClick={() => deleteRec.mutate(r.id)}>
+                  <button className="icon-btn" aria-label="Excluir despesa fixa" onClick={() => deleteRec.mutate(r.id)}>
                     ×
                   </button>
                 </>
@@ -246,7 +254,7 @@ function RecurringSection() {
 }
 
 export default function Contas() {
-  const { data } = useContasReport();
+  const { data, isLoading, error, refetch } = useContasReport();
   const { isOwner } = useAuth();
   const [billModal, setBillModal] = useState<'pagar' | 'receber' | null>(null);
 
@@ -254,6 +262,11 @@ export default function Contas() {
     <>
       <PageHeader title="Contas" subtitle="Contas a pagar, a receber e patrimônio líquido" />
       <div className="scroll-area">
+        {(isLoading || error) && (
+          <QueryState isLoading={isLoading} error={error} onRetry={refetch}>
+            <div />
+          </QueryState>
+        )}
         <div className="page">
           <div className="info-banner" style={{ background: 'var(--banner-amber-bg)', border: '1px solid var(--banner-amber-border)', color: 'var(--banner-amber-text)' }}>
             <strong>Contas</strong>&nbsp;responde: <em>o que ainda falta pagar e receber?</em> Só entra no Caixa quando você dá baixa.
