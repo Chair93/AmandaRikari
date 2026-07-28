@@ -51,10 +51,10 @@ export default function Lancamentos() {
             <button className={'pill' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>
               Todos
             </button>
-            <button className={'pill' + (filter === 'receita' ? ' income' : '')} onClick={() => setFilter('receita')}>
+            <button className={'pill' + (filter === 'receita' ? ' active income' : '')} onClick={() => setFilter('receita')}>
               Receitas
             </button>
-            <button className={'pill' + (filter === 'despesa' ? ' expense' : '')} onClick={() => setFilter('despesa')}>
+            <button className={'pill' + (filter === 'despesa' ? ' active expense' : '')} onClick={() => setFilter('despesa')}>
               Despesas
             </button>
           </div>

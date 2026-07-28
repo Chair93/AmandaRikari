@@ -378,9 +378,26 @@ a {
   padding: 6px 12px;
   font-size: 12px;
 }
+/* Selected state has to be readable at a glance — a 14%-alpha wash over a
+   near-identical surface wasn't. The 2px ring in the state's own color is
+   the signal; the tint is just warmth. */
 .pill.active {
-  background: var(--active-bg);
+  background: var(--accent-soft-strong);
   color: var(--active-color);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: 700;
+}
+/* Colored variants of the selected state (e.g. the Receitas/Despesas filter
+   in Lançamentos): same ring, in the money color. */
+.pill.active.income {
+  background: var(--income-soft);
+  color: var(--income-text);
+  box-shadow: inset 0 0 0 2px var(--income-text);
+}
+.pill.active.expense {
+  background: var(--expense-soft);
+  color: var(--expense-text);
+  box-shadow: inset 0 0 0 2px var(--expense-text);
 }
 .pill.accent {
   color: var(--accent-text);
@@ -790,17 +807,24 @@ select.input:focus {
   background: var(--surface-2);
   color: var(--idle-color);
 }
+/* Same rule as .pill.active: the ring makes the chosen tab unmistakable. */
 .tab.active-expense {
   background: var(--expense-soft);
   color: var(--expense-text);
+  box-shadow: inset 0 0 0 2px var(--expense-text);
+  font-weight: 700;
 }
 .tab.active-income {
   background: var(--income-soft);
   color: var(--income-text);
+  box-shadow: inset 0 0 0 2px var(--income-text);
+  font-weight: 700;
 }
 .tab.active-accent {
-  background: var(--active-bg);
+  background: var(--accent-soft-strong);
   color: var(--active-color);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: 700;
 }
 
 /* ---------- Modal ---------- */
