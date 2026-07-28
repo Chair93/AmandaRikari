@@ -70,14 +70,17 @@ export default function Lancamentos() {
                     <div className="tx-row tx-head" aria-hidden="true">
                       <span>Data</span>
                       <span>Descrição</span>
-                      <span>Cliente</span>
+                      <span>Cliente / item</span>
                       <span>Pagamento</span>
                       <span className="tx-amount">Valor</span>
                       <span className="tx-margin">Margem</span>
                       <span />
                     </div>
                     {g.items.map((tx) => {
-                      const clientName = tx.capital ? tx.socio : tx.client?.name;
+                      // Purchases and direct sales have no client — the item
+                      // is the identity of the row, so name it instead of "—".
+                      const itemName = tx.product?.name || tx.equipment?.name || tx.sales[0]?.product?.name;
+                      const clientName = tx.capital ? tx.socio : tx.client?.name || itemName;
                       const categoryName = tx.service?.name || tx.category?.name || 'Categoria removida';
                       const hasMargem = tx.type === 'receita' && tx.variableCost != null;
                       const margem = hasMargem ? tx.amount - (tx.variableCost || 0) : 0;

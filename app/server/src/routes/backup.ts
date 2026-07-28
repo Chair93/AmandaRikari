@@ -78,14 +78,14 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     const prodIdMap = new Map<string, string>();
     for (const p of d.products || []) {
       const row = await tx.product.create({
-        data: { businessId, name: p.name, unit: p.unit || 'ml', packageCost: p.packageCost || 0, packageQty: p.packageQty || 1, salePrice: p.salePrice || 0, stock: p.stock || 0, avgCost: p.avgCost || p.packageCost || 0, expiresAt: p.expiresAt || null, kind: p.kind || 'operacional' },
+        data: { businessId, name: p.name, unit: p.unit || 'ml', packageCost: p.packageCost || 0, packageQty: p.packageQty || 1, salePrice: p.salePrice || 0, stock: p.stock || 0, avgCost: p.avgCost || p.packageCost || 0, expiresAt: p.expiresAt || null, kind: p.kind || 'operacional', lowStockAt: p.lowStockAt ?? 1 },
       });
       prodIdMap.set(p.id, row.id);
     }
     const eqIdMap = new Map<string, string>();
     for (const e of d.equipment || []) {
       const row = await tx.equipment.create({
-        data: { businessId, name: e.name, kind: e.kind || (e.kwh > 0 ? 'maquina' : 'utensilio'), qty: e.qty || 1, cost: e.cost || 0, usefulUses: e.usefulUses || 0, kwh: e.kwh || 0, baixas: e.baixas || 0, perdaBaixa: e.perdaBaixa || 0, baixadoEm: e.baixadoEm || null },
+        data: { businessId, name: e.name, kind: e.kind || (e.kwh > 0 ? 'maquina' : 'utensilio'), qty: e.qty ?? 1, cost: e.cost || 0, usefulUses: e.usefulUses || 0, kwh: e.kwh || 0, baixas: e.baixas || 0, perdaBaixa: e.perdaBaixa || 0, baixadoEm: e.baixadoEm || null },
       });
       eqIdMap.set(e.id, row.id);
     }

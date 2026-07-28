@@ -47,6 +47,8 @@ export interface Product {
   avgCost: number;
   expiresAt: string | null;
   kind: 'operacional' | 'descartavel';
+  /** Alert when stock falls to this many units (per product). */
+  lowStockAt: number;
 }
 
 export interface Equipment {
@@ -128,7 +130,10 @@ export interface Transaction {
   accrualOnly: boolean;
   packageId: string | null;
   items: TxItem[];
-  sales: TxSale[];
+  sales: (TxSale & { product?: { name: string } | null })[];
+  /** Set on "+ Entrada"/"+ Compra" purchase entries — what was bought. */
+  product?: { name: string } | null;
+  equipment?: { name: string } | null;
   category?: { name: string; type: TxType };
   client?: { name: string } | null;
   service?: { name: string } | null;

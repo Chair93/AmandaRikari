@@ -13,6 +13,7 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
   const [salePrice, setSalePrice] = useState(editingProduct?.salePrice ? String(editingProduct.salePrice).replace('.', ',') : '');
   const [kind, setKind] = useState<'operacional' | 'descartavel'>(editingProduct?.kind || 'operacional');
   const [expiresAt, setExpiresAt] = useState(editingProduct?.expiresAt || '');
+  const [lowStockAt, setLowStockAt] = useState(editingProduct ? String(editingProduct.lowStockAt).replace('.', ',') : '1');
   const [error, setError] = useState<string | null>(null);
 
   const perUnit = numOr0(packageQty) > 0 ? numOr0(packageCost) / numOr0(packageQty) : 0;
@@ -32,6 +33,7 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
         salePrice: numOr0(salePrice),
         kind,
         expiresAt: expiresAt || null,
+        lowStockAt: numOr0(lowStockAt),
       });
       onClose();
     } catch (e) {
@@ -83,10 +85,17 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
           O produto entra cadastrado com estoque zerado — use o botão <strong>+ Entrada</strong> no Estoque pra registrar a primeira compra (e lançar como saída no caixa, se quiser).
         </div>
       )}
-      <label className="field">
-        Validade (opcional)
-        <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
-      </label>
+      <div className="field-row">
+        <label className="field">
+          Validade (opcional)
+          <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+        </label>
+        <label className="field">
+          Avisar estoque baixo em (un)
+          <input className="input" inputMode="decimal" value={lowStockAt} onChange={(e) => setLowStockAt(e.target.value)} />
+          <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>O alerta aparece quando o estoque chegar neste número.</span>
+        </label>
+      </div>
       {error && <div className="auth-error">{error}</div>}
       <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
         <button className="btn-secondary" onClick={onClose}>

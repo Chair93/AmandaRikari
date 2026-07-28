@@ -8,14 +8,12 @@ export default function EquipmentModal({ onClose, editingEquipment }: { onClose:
   const saveEquipment = useSaveEquipment();
   const [name, setName] = useState(editingEquipment?.name || '');
   const [kind, setKind] = useState<'utensilio' | 'maquina'>(editingEquipment?.kind || 'utensilio');
-  const [qty, setQty] = useState(editingEquipment ? String(editingEquipment.qty) : '1');
   const [cost, setCost] = useState(editingEquipment ? String(editingEquipment.cost).replace('.', ',') : '');
   const [usefulUses, setUsefulUses] = useState(editingEquipment ? String(editingEquipment.usefulUses) : '');
   const [kwh, setKwh] = useState(editingEquipment?.kwh ? String(editingEquipment.kwh).replace('.', ',') : '');
   const [error, setError] = useState<string | null>(null);
 
   const perUse = numOr0(usefulUses) > 0 ? numOr0(cost) / numOr0(usefulUses) : 0;
-  const ativoPreview = numOr0(cost) * (numOr0(qty) || 1);
 
   async function onSave() {
     if (!name.trim() || numOr0(usefulUses) <= 0) {
@@ -23,7 +21,11 @@ export default function EquipmentModal({ onClose, editingEquipment }: { onClose:
       return;
     }
     try {
-      await saveEquipment.mutateAsync({ id: editingEquipment?.id, name: name.trim(), kind, qty: numOr0(qty) || 1, cost: numOr0(cost), usefulUses: numOr0(usefulUses), kwh: kind === 'maquina' ? numOr0(kwh) : 0 });
+      // Quantity is deliberately absent: registration only creates the entry,
+      // and units arrive through "+ Compra" so every asset also books the cash
+      // out. Same rule the products got — otherwise the balance sheet carries
+      // assets no money ever paid for.
+      await saveEquipment.mutateAsync({ id: editingEquipment?.id, name: name.trim(), kind, cost: numOr0(cost), usefulUses: numOr0(usefulUses), kwh: kind === 'maquina' ? numOr0(kwh) : 0 });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar');
@@ -49,16 +51,10 @@ export default function EquipmentModal({ onClose, editingEquipment }: { onClose:
         Nome
         <input className="input" placeholder="Ex: Extrator de cravos" value={name} onChange={(e) => setName(e.target.value)} />
       </label>
-      <div className="field-row">
-        <label className="field">
-          Quantidade
-          <input className="input" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
-        </label>
-        <label className="field">
-          Custo por unidade (R$)
-          <input className="input" inputMode="decimal" placeholder="0,00" value={cost} onChange={(e) => setCost(e.target.value)} />
-        </label>
-      </div>
+      <label className="field">
+        Custo por unidade (R$)
+        <input className="input" inputMode="decimal" placeholder="0,00" value={cost} onChange={(e) => setCost(e.target.value)} />
+      </label>
       <div className="field-row">
         <label className="field">
           Usos até depreciar 100%
@@ -71,9 +67,12 @@ export default function EquipmentModal({ onClose, editingEquipment }: { onClose:
           </label>
         )}
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-        {fmtBRL(perUse)} / uso · ativo total: {fmtBRL(ativoPreview)}
-      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{fmtBRL(perUse)} / uso</div>
+      {!editingEquipment && (
+        <div className="info-banner" style={{ background: 'var(--banner-green-bg)', border: '1px solid var(--banner-green-border)', color: 'var(--banner-green-text)' }}>
+          Depois de salvar, use <strong>+ Compra</strong> na lista para dar entrada nas unidades — é a compra que lança a saída no caixa.
+        </div>
+      )}
       {error && <div className="auth-error">{error}</div>}
       <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
         <button className="btn-secondary" onClick={onClose}>

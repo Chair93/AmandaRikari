@@ -57,7 +57,7 @@ function EstoqueRow({ p }: { p: Product }) {
         </div>
       </div>
       <div className="row-stats">
-        {p.stock <= 1 && <span className="badge warning">estoque baixo</span>}
+        {p.stock <= p.lowStockAt && <span className="badge warning">estoque baixo</span>}
         <ExpiryBadge expiresAt={p.expiresAt} />
         <span style={{ fontSize: 14, fontWeight: 700 }}>{p.stock} un</span>
         <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{fmtBRL(valor)}</span>
@@ -150,7 +150,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const { data: impact, isPending: impactPending } = useEquipmentDeleteImpact(confirmDelete ? eq.id : null);
   const [prompt, setPrompt] = useState<'compra' | 'baixa' | null>(null);
   const isMaq = (eq.kind || (eq.kwh > 0 ? 'maquina' : 'utensilio')) === 'maquina';
-  const q = eq.qty || 1;
+  const q = eq.qty;
   const usos = eq.usos || 0;
   const totalUsos = eq.usefulUses * q;
   const depPct = totalUsos > 0 ? Math.min(100, Math.round((usos / totalUsos) * 100)) : 0;
@@ -171,7 +171,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-          {q} {q === 1 ? 'unidade' : 'unidades'} · {fmtBRL(bruto)} em ativo
+          {q === 0 ? 'cadastrado — dê entrada com + Compra' : `${q} ${q === 1 ? 'unidade' : 'unidades'} · ${fmtBRL(bruto)} em ativo`}
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
           {fmtBRL(perUse)} depreciação/uso · {eq.usefulUses} usos por unidade{isMaq && eq.kwh > 0 ? ` + ${String(eq.kwh).replace('.', ',')} kWh/hora` : ''}
@@ -272,7 +272,7 @@ export default function Estoque() {
   const totalValor = products.reduce((a, p) => a + p.stock * p.packageCost, 0);
   const totalVenda = products.reduce((a, p) => a + p.stock * p.salePrice, 0);
   const totalMargem = products.reduce((a, p) => (p.salePrice > 0 ? a + p.stock * (p.salePrice - (p.avgCost || p.packageCost)) : a), 0);
-  const totalAtivos = equipment.reduce((a, eq) => a + Math.max(0, eq.cost * (eq.qty || 1) - (eq.depreciacaoAcumulada || 0)), 0);
+  const totalAtivos = equipment.reduce((a, eq) => a + Math.max(0, eq.cost * eq.qty - (eq.depreciacaoAcumulada || 0)), 0);
 
   return (
     <>

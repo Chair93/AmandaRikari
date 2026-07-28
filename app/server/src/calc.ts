@@ -107,7 +107,7 @@ export function equipmentUsageCounts(allItems: { kind: string; equipmentId: stri
 
 export function equipmentDepreciation(eq: EquipmentRow, usos: number): number {
   const porUso = numOr0(eq.usefulUses) > 0 ? numOr0(eq.cost) / numOr0(eq.usefulUses) : 0;
-  const bruto = numOr0(eq.cost) * (numOr0(eq.qty) || 1);
+  const bruto = numOr0(eq.cost) * numOr0(eq.qty);
   return Math.min(bruto, usos * porUso);
 }
 
@@ -268,7 +268,7 @@ export function computeBalanceSheet(params: {
   const caixa = allTx.reduce((a, t) => a + cashDelta(t), 0);
   const estoque = products.reduce((a, p) => a + numOr0(p.stock) * (numOr0(p.avgCost) || numOr0(p.packageCost)), 0);
   const usos = equipmentUsageCounts(allTx.flatMap((t) => t.items));
-  const equipBruto = equipment.reduce((a, eq) => a + numOr0(eq.cost) * (numOr0(eq.qty) || 1), 0);
+  const equipBruto = equipment.reduce((a, eq) => a + numOr0(eq.cost) * numOr0(eq.qty), 0);
   const depreciacao = equipment.reduce((a, eq) => a + equipmentDepreciation(eq, usos[eq.id] || 0), 0);
   const equipAtivo = equipBruto - depreciacao;
   const perdaBaixas = equipment.reduce((a, eq) => a + numOr0(eq.perdaBaixa), 0);

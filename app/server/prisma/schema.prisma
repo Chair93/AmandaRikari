@@ -115,6 +115,9 @@ model Product {
   avgCost     Float    @default(0)
   expiresAt   String? // 'YYYY-MM-DD'
   kind        String   @default("operacional") // 'operacional' | 'descartavel'
+  /// Per-product alert threshold: "estoque baixo" fires at stock <= this.
+  /// Default 1 preserves the old global behaviour for existing rows.
+  lowStockAt  Float    @default(1)
 
   serviceItems     ServiceItem[]
   transactionItems TransactionItem[]

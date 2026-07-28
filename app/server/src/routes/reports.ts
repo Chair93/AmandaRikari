@@ -15,6 +15,8 @@ import {
   type CategoryRow,
 } from '../calc.js';
 import { ensureRecurringGenerated } from './recurring.js';
+import { computeReconciliation, reconcile } from '../reconciliation.js';
+import { requireOwnerForWrites } from '../auth.js';
 import { todayStr, daysBetween, numOr0 } from '../util.js';
 
 const router = Router();
@@ -71,7 +73,7 @@ export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
       });
     });
   data.products
-    .filter((p) => numOr0(p.stock) <= 1)
+    .filter((p) => numOr0(p.stock) <= numOr0((p as { lowStockAt?: number }).lowStockAt ?? 1))
     .slice(0, 4)
     .forEach((p) => alerts.push({ id: 'e' + p.id, kind: 'stock', overdue: false, text: `Estoque baixo: ${p.name} (${numOr0(p.stock)} un)` }));
   data.products
@@ -281,6 +283,19 @@ router.get('/contas', async (req: AuthedRequest, res) => {
   });
 });
 
+/** What the "ajuste a conciliar" is made of, item by item. */
+router.get('/reconciliation', async (req: AuthedRequest, res) => {
+  res.json(await computeReconciliation(req.businessId!));
+});
+
+/** One click books the missing history — an aporte + purchase pair per item.
+ *  Amounts are recomputed here; the client sends nothing. */
+router.post('/reconciliation', requireOwnerForWrites, async (req: AuthedRequest, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { name: true } });
+  const result = await reconcile(req.businessId!, user?.name || 'Sócia');
+  res.json(result);
+});
+
 function serializeTx(t: TxRow & { id: string }, data: Awaited<ReturnType<typeof loadAll>>) {
   const client = data.clients.find((c) => c.id === t.clientId);
   const service = data.services.find((s) => s.id === t.serviceId);
@@ -290,7 +305,15 @@ function serializeTx(t: TxRow & { id: string }, data: Awaited<ReturnType<typeof 
     amount: t.amount,
     date: t.date,
     categoryName: service ? service.name : categoryName(data.categories, t.categoryId),
-    clientName: t.capital ? t.socio : client?.name || null,
+    // For purchases/sales there is no client — name the item instead, so the
+    // row never reads as an anonymous "Compra de estoque".
+    clientName: t.capital
+      ? t.socio
+      : client?.name ||
+        data.products.find((x) => x.id === (t as { productId?: string | null }).productId)?.name ||
+        data.equipment.find((x) => x.id === (t as { equipmentId?: string | null }).equipmentId)?.name ||
+        data.products.find((x) => x.id === t.sales?.[0]?.productId)?.name ||
+        null,
     variableCost: t.variableCost,
     hasMargem: t.type === 'receita' && t.variableCost != null,
     margem: t.variableCost != null ? t.amount - t.variableCost : null,

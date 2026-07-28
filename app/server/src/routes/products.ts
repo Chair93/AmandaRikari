@@ -17,6 +17,7 @@ const bodySchema = z.object({
   stock: z.number().min(0).optional(),
   expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   kind: z.enum(['operacional', 'descartavel']).optional(),
+  lowStockAt: z.number().min(0).optional(),
 });
 
 router.get('/', async (req: AuthedRequest, res) => {
@@ -40,6 +41,7 @@ router.post('/', async (req: AuthedRequest, res) => {
       avgCost: d.packageCost,
       expiresAt: d.expiresAt || null,
       kind: d.kind || 'operacional',
+      lowStockAt: d.lowStockAt ?? 1,
     },
   });
   res.status(201).json(row);
@@ -62,6 +64,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
       stock: d.stock ?? existing.stock,
       expiresAt: d.expiresAt || null,
       kind: d.kind || existing.kind,
+      lowStockAt: d.lowStockAt ?? existing.lowStockAt,
     },
   });
   res.json(row);

@@ -33,10 +33,14 @@ const bodySchema = z.object({
 
 const TX_INCLUDE = {
   items: true,
-  sales: true,
+  // The sold product's name rides along so the list can say what was sold.
+  sales: { include: { product: { select: { name: true } } } },
   category: { select: { name: true, type: true } },
   client: { select: { name: true } },
   service: { select: { name: true } },
+  // Purchase entries point at what they bought; the list shows it by name.
+  product: { select: { name: true } },
+  equipment: { select: { name: true } },
 } as const;
 
 router.get('/', async (req: AuthedRequest, res) => {

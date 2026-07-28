@@ -76,7 +76,7 @@ export function useProducts(enabled = true) {
 export function useSaveProduct() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; unit: string; packageCost: number; packageQty: number; salePrice?: number; stock?: number; expiresAt?: string | null; kind?: 'operacional' | 'descartavel' }) =>
+    mutationFn: (input: { id?: string; name: string; unit: string; packageCost: number; packageQty: number; salePrice?: number; stock?: number; expiresAt?: string | null; kind?: 'operacional' | 'descartavel'; lowStockAt?: number }) =>
       input.id ? api.put<Product>(`/products/${input.id}`, input) : api.post<Product>('/products', input),
     onSuccess: invalidate,
   });
@@ -169,6 +169,20 @@ export function useSettings() {
 export function useSaveSettings() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (input: Partial<Settings>) => api.put<Settings>('/settings', input), onSuccess: invalidate });
+}
+
+// ---------- Reconciliation ----------
+export interface ReconciliationData {
+  lines: { kind: 'product' | 'equipment'; id: string; name: string; missing: number }[];
+  totalMissing: number;
+}
+/** Only fetched while the Balanço shows a plug — it is a diagnostic query. */
+export function useReconciliation(enabled: boolean) {
+  return useQuery({ queryKey: ['reconciliation'], queryFn: () => api.get<ReconciliationData>('/reports/reconciliation'), enabled });
+}
+export function useReconcile() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: () => api.post<{ created: number; total: number }>('/reports/reconciliation'), onSuccess: invalidate });
 }
 
 // ---------- Transactions ----------

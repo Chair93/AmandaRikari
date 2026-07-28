@@ -46,7 +46,10 @@ router.post('/', async (req: AuthedRequest, res) => {
       businessId: req.businessId!,
       name: d.name,
       kind: d.kind,
-      qty: d.qty ?? 1,
+      // Registration creates the catalog entry only. Units arrive through
+      // "+ Compra", which always books the cash out — same discipline the
+      // products got when the initial-stock field was removed.
+      qty: d.qty ?? 0,
       cost: d.cost,
       usefulUses: d.usefulUses,
       kwh: d.kind === 'maquina' ? d.kwh ?? 0 : 0,
@@ -92,7 +95,7 @@ router.post('/:id/comprar', async (req: AuthedRequest, res) => {
   const { qty, unitCost } = parsed.data;
 
   const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.equipment.update({ where: { id: eq.id }, data: { qty: (eq.qty || 1) + qty, cost: unitCost } });
+    const updated = await tx.equipment.update({ where: { id: eq.id }, data: { qty: eq.qty + qty, cost: unitCost } });
     let cat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Compra de bens' } });
     if (!cat) cat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Compra de bens', type: 'despesa', investment: true } });
     await tx.transaction.create({
@@ -119,7 +122,7 @@ router.post('/:id/baixa', async (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const eq = await prisma.equipment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!eq) return res.status(404).json({ error: 'not_found' });
-  const q = eq.qty || 1;
+  const q = eq.qty;
   const qtd = Math.min(parsed.data.qty, q);
   if (qtd <= 0) return res.status(400).json({ error: 'invalid_qty' });
 

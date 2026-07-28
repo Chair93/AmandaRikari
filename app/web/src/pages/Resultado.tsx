@@ -1,9 +1,68 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import PeriodNav, { type PeriodMode } from '../components/PeriodNav';
-import { useResultadoReport } from '../api/hooks';
+import { useReconcile, useReconciliation, useResultadoReport } from '../api/hooks';
+import { useAuth } from '../auth/AuthContext';
 import QueryState from '../components/QueryState';
 import { fmtBRL, maskable, monthLabelFromOffset, monthShortLabel, moneyColor } from '../format';
+
+
+/** The plug, itemized — and a button that books what's missing. Each line
+ *  becomes an aporte + purchase pair, so cash nets to zero, PL gains the
+ *  contribution, and the asset finally has a funding source. The list and
+ *  the button live next to the number they explain. */
+function ReconcilePanel({ plug }: { plug: number }) {
+  const { isOwner } = useAuth();
+  const { data, isLoading } = useReconciliation(Math.abs(plug) > 0.5);
+  const reconcile = useReconcile();
+  const [done, setDone] = useState<string | null>(null);
+
+  if (isLoading || !data) return null;
+
+  const rest = Math.round((plug - data.totalMissing) * 100) / 100;
+
+  return (
+    <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px 14px', marginTop: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {data.lines.length > 0 ? (
+        <>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>O que está sem lançamento de compra:</div>
+          {data.lines.map((l) => (
+            <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12 }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {l.name} <span style={{ color: 'var(--text-soft)' }}>({l.kind === 'equipment' ? 'bem' : 'estoque'})</span>
+              </span>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(l.missing)}</span>
+            </div>
+          ))}
+          {isOwner && (
+            <button
+              className="btn-primary"
+              style={{ alignSelf: 'flex-start', padding: '9px 16px', fontSize: 12.5 }}
+              disabled={reconcile.isPending}
+              onClick={async () => {
+                const r = await reconcile.mutateAsync();
+                setDone(`${r.created} lançamentos criados (${fmtBRL(r.total)}). Cada item ganhou um aporte + uma compra, com o caixa zerado.`);
+              }}
+            >
+              {reconcile.isPending ? 'Lançando…' : `Lançar o que falta (${fmtBRL(data.totalMissing)})`}
+            </button>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.45 }}>
+            Para cada item, entra um <strong>aporte de sócio</strong> e sai uma <strong>compra</strong> no mesmo valor — o caixa não muda, e o balanço passa a contar a história completa.
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.45 }}>
+          Não achei nenhum item sem compra — esse ajuste vem de outra diferença (ex.: estoque consumido além do comprado). Ele não afeta a DRE do mês.
+        </div>
+      )}
+      {data.lines.length > 0 && Math.abs(rest) > 0.5 && (
+        <div style={{ fontSize: 11, color: 'var(--text-soft)' }}>Restam {fmtBRL(rest)} de outras diferenças além destes itens.</div>
+      )}
+      {done && <div style={{ fontSize: 11.5, color: 'var(--income-text)', fontWeight: 600 }}>{done}</div>}
+    </div>
+  );
+}
 
 export default function Resultado() {
   const [mode, setMode] = useState<PeriodMode>('month');
@@ -200,7 +259,7 @@ export default function Resultado() {
               {Math.abs(balance.ajusteConciliar) > 0.5 && (
                 <>
                   <BalanceLine label="Ajuste a conciliar" value={mask(fmtBRL(balance.ajusteConciliar))} color="var(--expense-text)" small />
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.45, marginTop: 4 }}>Tem bem cadastrado sem lançamento de compra. Lance a saída de caixa para o balanço fechar com a DRE.</div>
+                  <ReconcilePanel plug={balance.ajusteConciliar} />
                 </>
               )}
             </div>
