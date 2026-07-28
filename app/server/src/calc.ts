@@ -334,10 +334,13 @@ export function computeBalanceSheet(params: {
   // Accrued-but-unpaid despesas (room fees booked accrualOnly, minus their
   // cashOnly payoffs): they lowered lucros without touching caixa, and their
   // debt already sits in aPagar — so the funding check has to net them out
-  // or every unpaid month would look like missing capital.
+  // or every unpaid month would look like missing capital. Only fee-type
+  // accruals (feeOf set) count: an inventory-loss accrual has no debt to
+  // pay — its counterpart is the stock that shrank, which the asset side
+  // already reflects.
   const provisoesEmAberto = Math.max(
     0,
-    allTx.filter((t) => t.type === 'despesa' && t.accrualOnly).reduce((a, t) => a + t.amount, 0) -
+    allTx.filter((t) => t.type === 'despesa' && t.accrualOnly && t.feeOf).reduce((a, t) => a + t.amount, 0) -
       allTx.filter((t) => t.type === 'despesa' && t.cashOnly).reduce((a, t) => a + t.amount, 0)
   );
 

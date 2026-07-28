@@ -7,8 +7,9 @@ export interface PromptField {
   label: string;
   hint?: string;
   defaultValue?: string;
-  /** 'money'/'qty' validate as numbers > 0; 'text' is free-form. */
-  kind?: 'money' | 'qty' | 'text';
+  /** 'money'/'qty' validate as numbers > 0; 'count' allows zero (an
+   *  inventory count of 0 is honest data); 'text' is free-form. */
+  kind?: 'money' | 'qty' | 'count' | 'text';
   required?: boolean;
 }
 
@@ -59,7 +60,7 @@ export default function PromptModal({
       if (raw === '') return setError(`Preencha ${f.label.toLowerCase()}.`);
       const n = parseNumberBR(raw);
       if (n == null) return setError(`Valor inválido em "${f.label}": "${raw}". Use apenas números, ex: 1.500,00`);
-      if (n <= 0) return setError(`"${f.label}" precisa ser maior que zero.`);
+      if (f.kind === 'count' ? n < 0 : n <= 0) return setError(`"${f.label}" precisa ser ${f.kind === 'count' ? 'zero ou mais' : 'maior que zero'}.`);
       out[f.key] = n;
     }
 

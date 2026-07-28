@@ -154,4 +154,49 @@ router.post('/:id/vender', async (req: AuthedRequest, res) => {
   res.json(result);
 });
 
+/** Estoque "Contagem" — inventory adjustment. The physical count replaces the
+ *  app's number and the difference, valued at average cost, is booked to the
+ *  result: a shortfall as 'Perda de inventário' (despesa), a surplus as
+ *  'Ganho de inventário' (receita). Both are accrualOnly — no cash moved,
+ *  the shelf just didn't match the books. */
+const inventarioSchema = z.object({ real: z.number().min(0), note: z.string().max(200).optional() });
+router.post('/:id/inventario', async (req: AuthedRequest, res) => {
+  const parsed = inventarioSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  const p = await prisma.product.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!p) return res.status(404).json({ error: 'not_found' });
+  const { real, note } = parsed.data;
+  const delta = Math.round((real - p.stock) * 100) / 100;
+  if (delta === 0) return res.json({ product: p, transaction: null });
+
+  const unitCost = p.avgCost || p.packageCost;
+  const value = Math.round(Math.abs(delta) * unitCost * 100) / 100;
+  const isPerda = delta < 0;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const prod = await tx.product.update({ where: { id: p.id }, data: { stock: real } });
+    let t = null;
+    if (value > 0) {
+      const type = isPerda ? 'despesa' : 'receita';
+      const catName = isPerda ? 'Perda de inventário' : 'Ganho de inventário';
+      let cat = await tx.category.findFirst({ where: { businessId: req.businessId, type, name: catName } });
+      if (!cat) cat = await tx.category.create({ data: { businessId: req.businessId!, name: catName, type } });
+      t = await tx.transaction.create({
+        data: {
+          businessId: req.businessId!,
+          type,
+          amount: value,
+          categoryId: cat.id,
+          date: new Date().toISOString().slice(0, 10),
+          accrualOnly: true,
+          productId: p.id,
+          note: `Ajuste de inventário: ${p.name} (${p.stock} → ${real})${note?.trim() ? ' — ' + note.trim() : ''}`,
+        },
+      });
+    }
+    return { product: prod, transaction: t };
+  });
+  res.json(result);
+});
+
 export default router;

@@ -9,6 +9,7 @@ import {
   useEquipmentDeleteImpact,
   useProductDeleteImpact,
   useProductEntrada,
+  useProductInventario,
   useProducts,
   useProductVender,
 } from '../api/hooks';
@@ -38,11 +39,12 @@ function EstoqueRow({ p }: { p: Product }) {
   const { isOwner } = useAuth();
   const entrada = useProductEntrada();
   const vender = useProductVender();
+  const inventario = useProductInventario();
   const del = useDeleteProduct();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: impact, isPending: impactPending } = useProductDeleteImpact(confirmDelete ? p.id : null);
-  const [prompt, setPrompt] = useState<'entrada' | 'venda' | null>(null);
+  const [prompt, setPrompt] = useState<'entrada' | 'venda' | 'contagem' | null>(null);
   const custo = p.avgCost || p.packageCost;
   const valor = p.stock * p.packageCost;
   const margemUnit = p.salePrice - custo;
@@ -74,6 +76,9 @@ function EstoqueRow({ p }: { p: Product }) {
           </button>
           <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
             Vender
+          </button>
+          <button className="pill ghost sm" onClick={() => setPrompt('contagem')}>
+            Contagem
           </button>
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             editar
@@ -113,6 +118,23 @@ function EstoqueRow({ p }: { p: Product }) {
           onCancel={() => setPrompt(null)}
           onConfirm={async (v, lancarNoCaixa) => {
             await entrada.mutateAsync({ id: p.id, qty: v.qty as number, unitCost: v.unitCost as number, lancarNoCaixa });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'contagem' && (
+        <PromptModal
+          title={`Ajuste de inventário — ${p.name}`}
+          description={`O app diz ${p.stock} un. Conte na prateleira e digite o número real: a diferença é lançada no resultado como perda ou ganho de inventário (${fmtBRL(custo)} por unidade), sem mexer no caixa.`}
+          fields={[
+            { key: 'real', label: 'Contagem real (un)', defaultValue: String(p.stock).replace('.', ','), kind: 'count' },
+            { key: 'note', label: 'Motivo (opcional)', kind: 'text', required: false },
+          ]}
+          confirmLabel="Ajustar"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v) => {
+            await inventario.mutateAsync({ id: p.id, real: v.real as number, note: (v.note as string) || undefined });
             setPrompt(null);
           }}
         />

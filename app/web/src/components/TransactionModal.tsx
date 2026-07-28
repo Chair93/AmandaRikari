@@ -17,6 +17,8 @@ const INTERNAL_CATEGORIES = new Set([
   'Sessão de pacote',
   'Taxas de maquininha',
   'Uso de sala',
+  'Perda de inventário',
+  'Ganho de inventário',
   'Contas a pagar',
   'Contas a receber',
 ]);

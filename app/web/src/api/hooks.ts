@@ -108,6 +108,13 @@ export function useProductVender() {
     onSuccess: invalidate,
   });
 }
+export function useProductInventario() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (input: { id: string; real: number; note?: string }) => api.post(`/products/${input.id}/inventario`, input),
+    onSuccess: invalidate,
+  });
+}
 
 // ---------- Equipment ----------
 export function useEquipment() {
