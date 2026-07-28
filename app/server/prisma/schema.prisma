@@ -294,6 +294,11 @@ model Settings {
   salaMode           String  @default("off") // 'off' | 'fixo' | 'pct'
   salaFixo           Float   @default(0)
   salaPct            Float   @default(0)
+  /// Who the room is rented from — names the monthly conta a pagar.
+  salaOwner          String  @default("")
+  /// WhatsApp reminder template for Agenda. Placeholders {nome}, {data},
+  /// {hora}, {servico} are filled client-side. Empty = built-in default.
+  waTemplate         String  @default("")
   agendaStartHour    Int     @default(9)
   agendaEndHour      Int     @default(19)
   agendaSlotMin      Int     @default(30)
@@ -320,6 +325,10 @@ model Bill {
   /// 'YYYY-MM' this recurring bill was generated for. Unique together with
   /// recId so two concurrent requests can't both create the same month's bill.
   recMonth   String?
+  /// The month's accumulated room-rental debt (uso de sala). recMonth holds
+  /// which month it accumulates for; atendimentos add to it, deleting them
+  /// subtracts, and settling it is what actually pays the room owner.
+  sala       Boolean   @default(false)
   // Set when this bill is an installment of a package sold "a prazo" — lets
   // settlement flag the resulting transaction cashOnly (paying an
   // installment moves cash but doesn't itself earn revenue).

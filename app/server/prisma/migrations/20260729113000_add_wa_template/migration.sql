@@ -1,0 +1,1 @@
+ALTER TABLE "Settings" ADD COLUMN "waTemplate" TEXT NOT NULL DEFAULT '';

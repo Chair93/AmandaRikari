@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { feePctFor, computeServiceCost, packageSessionAmount, salaFeeAmount } from '../calc.js';
 import { assertOwned } from '../ownership.js';
+import { adjustSalaBill } from '../sala.js';
 import { todayStr, addMonthsToDate, round2 } from '../util.js';
 
 const router = Router();
@@ -164,14 +165,16 @@ router.post('/:id/use-session', async (req: AuthedRequest, res) => {
     });
     // A package session still happens inside the rented room, so it owes the
     // room fee like any atendimento — % mode charges over this session's
-    // share of the package price.
+    // share of the package price. accrualOnly: the debt accumulates in the
+    // month's bill to the room owner; cash only moves when that's settled.
     const salaAmount = round2(salaFeeAmount(recognizedAmount, settings!));
     if (salaAmount > 0) {
       let scat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Uso de sala' } });
       if (!scat) scat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Uso de sala', type: 'despesa' } });
       await tx.transaction.create({
-        data: { businessId: req.businessId!, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: todayStr(), feeOf: t.id, note: 'Uso da sala' },
+        data: { businessId: req.businessId!, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: todayStr(), feeOf: t.id, accrualOnly: true, note: 'Uso da sala' },
       });
+      await adjustSalaBill(tx, req.businessId!, todayStr(), salaAmount, settings!.salaOwner || '');
     }
     const updated = await tx.package.update({ where: { id: pkg.id }, data: { used: pkg.used + 1 } });
     return { transaction: t, package: updated };

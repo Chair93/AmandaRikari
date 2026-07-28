@@ -178,6 +178,8 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           recorrente: !!b.recorrente,
           settled: !!b.settled,
           settledAt: b.settledAt || null,
+          sala: !!b.sala,
+          recMonth: b.recMonth || null,
         },
       });
     }
@@ -203,40 +205,34 @@ router.post('/restore', async (req: AuthedRequest, res) => {
       });
     }
     if (d.settings) {
-      await tx.settings.upsert({
-        where: { businessId },
-        create: {
-          businessId,
-          energyPricePerKwh: d.settings.energyPricePerKwh || 0,
-          costPerKm: d.settings.costPerKm || 0,
-          prolaboreMode: d.settings.prolaboreMode || 'pct',
-          prolaborePct: d.settings.prolaborePct || 0,
-          prolaboreFixo: d.settings.prolaboreFixo || 0,
-          metaMensal: d.settings.metaMensal || 0,
-          taxaCredito: d.settings.taxaCredito || 0,
-          taxaDebito: d.settings.taxaDebito || 0,
-          taxaPix: d.settings.taxaPix || 0,
-          emailDigestEnabled: !!d.settings.emailDigestEnabled,
-          agendaStartHour: d.settings.agendaStartHour ?? 9,
-          agendaEndHour: d.settings.agendaEndHour ?? 19,
-          agendaSlotMin: d.settings.agendaSlotMin ?? 30,
-        },
-        update: {
-          energyPricePerKwh: d.settings.energyPricePerKwh || 0,
-          costPerKm: d.settings.costPerKm || 0,
-          prolaboreMode: d.settings.prolaboreMode || 'pct',
-          prolaborePct: d.settings.prolaborePct || 0,
-          prolaboreFixo: d.settings.prolaboreFixo || 0,
-          metaMensal: d.settings.metaMensal || 0,
-          taxaCredito: d.settings.taxaCredito || 0,
-          taxaDebito: d.settings.taxaDebito || 0,
-          taxaPix: d.settings.taxaPix || 0,
-          emailDigestEnabled: !!d.settings.emailDigestEnabled,
-          agendaStartHour: d.settings.agendaStartHour ?? 9,
-          agendaEndHour: d.settings.agendaEndHour ?? 19,
-          agendaSlotMin: d.settings.agendaSlotMin ?? 30,
-        },
-      });
+      // One shared object so a settings field added later can't silently go
+      // missing from the create or the update branch again.
+      const s = {
+        energyPricePerKwh: d.settings.energyPricePerKwh || 0,
+        costPerKm: d.settings.costPerKm || 0,
+        prolaboreMode: d.settings.prolaboreMode || 'pct',
+        prolaborePct: d.settings.prolaborePct || 0,
+        prolaboreFixo: d.settings.prolaboreFixo || 0,
+        metaMensal: d.settings.metaMensal || 0,
+        taxaCredito: d.settings.taxaCredito || 0,
+        taxaDebito: d.settings.taxaDebito || 0,
+        taxaPix: d.settings.taxaPix || 0,
+        emailDigestEnabled: !!d.settings.emailDigestEnabled,
+        emailBackupEnabled: d.settings.emailBackupEnabled ?? true,
+        receiptDoc: d.settings.receiptDoc || '',
+        receiptPhone: d.settings.receiptPhone || '',
+        receiptAddress: d.settings.receiptAddress || '',
+        receiptCity: d.settings.receiptCity || '',
+        salaMode: d.settings.salaMode || 'off',
+        salaFixo: d.settings.salaFixo || 0,
+        salaPct: d.settings.salaPct || 0,
+        salaOwner: d.settings.salaOwner || '',
+        waTemplate: d.settings.waTemplate || '',
+        agendaStartHour: d.settings.agendaStartHour ?? 9,
+        agendaEndHour: d.settings.agendaEndHour ?? 19,
+        agendaSlotMin: d.settings.agendaSlotMin ?? 30,
+      };
+      await tx.settings.upsert({ where: { businessId }, create: { businessId, ...s }, update: s });
     }
   });
 

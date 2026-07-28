@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAppointment } from '../api/hooks';
+import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAppointment, useSettings } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtDateBR, todayStr } from '../format';
+import { todayStr } from '../format';
+import { fillWaTemplate } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
 import type { Appointment } from '../api/types';
 import { IconChevronLeft, IconChevronRight } from '../icons';
@@ -32,6 +33,7 @@ export default function Agenda() {
   const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string } | null>(null);
   const deleteAppointment = useDeleteAppointment();
   const { data: clientesData } = useClientesReport();
+  const { data: settings } = useSettings();
 
   const weekStart = startOfWeek(selectedDate);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
@@ -52,7 +54,12 @@ export default function Agenda() {
     const fone = (a.client.phone || '').replace(/\D/g, '');
     if (!fone) return null;
     const numero = fone.length <= 11 ? '55' + fone : fone;
-    const msg = `Oi, ${a.client.name.split(' ')[0]}! Passando para confirmar seu horário no dia ${fmtDateBR(a.date)} às ${a.time}${a.service ? ` para ${a.service.name}` : ''}. Até lá! 💗`;
+    const msg = fillWaTemplate(settings?.waTemplate || '', {
+      clientName: a.client.name,
+      date: a.date,
+      time: a.time,
+      serviceName: a.service?.name || null,
+    });
     return `https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(msg)}`;
   }
 

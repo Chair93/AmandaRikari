@@ -130,9 +130,11 @@ function isInvestmentCategory(categoryId: string, categories: CategoryRow[]): bo
   return !!(c && c.type === 'despesa' && c.investment);
 }
 
-/** A despesa transaction that should count toward the operating result (DRE). */
+/** A despesa transaction that should count toward the operating result (DRE).
+ *  cashOnly despesas are excluded: they pay off something already expensed
+ *  when it accrued (e.g. settling the month's room-fee bill). */
 export function isOpExpense(t: TxRow, categories: CategoryRow[]): boolean {
-  return t.type === 'despesa' && !t.capital && !t.estoque && !t.ativo && !isInvestmentCategory(t.categoryId, categories);
+  return t.type === 'despesa' && !t.capital && !t.cashOnly && !t.estoque && !t.ativo && !isInvestmentCategory(t.categoryId, categories);
 }
 
 export function salesTotal(sales: TxSale[]): number {
@@ -142,12 +144,13 @@ export function salesCmv(sales: TxSale[]): number {
   return sales.reduce((a, sl) => a + sl.qty * sl.unitCost, 0);
 }
 
-/** Cash impact of a transaction — 0 for accrualOnly (revenue recognized with
- *  no new money in), full signed amount otherwise (cashOnly transactions DO
- *  move cash, they just don't count as revenue yet — see isRevenueTx). */
+/** Cash impact of a transaction — 0 for accrualOnly (recognized with no
+ *  money moving: package session revenue, or an accrued room fee that's owed
+ *  but unpaid), full signed amount otherwise (cashOnly transactions DO move
+ *  cash, they just don't count in the DRE — see isRevenueTx/isOpExpense). */
 export function cashDelta(t: TxRow): number {
-  if (t.type === 'receita') return t.accrualOnly ? 0 : t.amount;
-  return -t.amount;
+  if (t.accrualOnly) return 0;
+  return t.type === 'receita' ? t.amount : -t.amount;
 }
 
 /** Whether a receita transaction counts as recognized (accrual) revenue for
@@ -312,12 +315,22 @@ export function computeBalanceSheet(params: {
   const desp = allTx.filter((t) => isOpExpense(t, categories)).reduce((a, t) => a + t.amount, 0);
   const lucrosAcumulados = rec.reduce((a, t) => a + t.amount, 0) - custoVar - cmv - desp;
 
+  // Accrued-but-unpaid despesas (room fees booked accrualOnly, minus their
+  // cashOnly payoffs): they lowered lucros without touching caixa, and their
+  // debt already sits in aPagar — so the funding check has to net them out
+  // or every unpaid month would look like missing capital.
+  const provisoesEmAberto = Math.max(
+    0,
+    allTx.filter((t) => t.type === 'despesa' && t.accrualOnly).reduce((a, t) => a + t.amount, 0) -
+      allTx.filter((t) => t.type === 'despesa' && t.cashOnly).reduce((a, t) => a + t.amount, 0)
+  );
+
   const ativoOperacional = caixa + estoque + equipAtivo;
   const ativoTotal = ativoOperacional + aReceberAberto;
   const passivoTotal = aPagarAberto + emprestimoSocios + receitaDiferida;
   const plLiquido = ativoTotal - passivoTotal;
   const resultadoARealizar = aReceberAberto - aPagarAberto;
-  const ajusteConciliar = ativoOperacional - aportesTotal - (lucrosAcumulados - perdaBaixas);
+  const ajusteConciliar = ativoOperacional - aportesTotal - (lucrosAcumulados - perdaBaixas) - provisoesEmAberto;
   const caixaProjetado = caixa + aReceberAberto - aPagarAberto;
 
   return {

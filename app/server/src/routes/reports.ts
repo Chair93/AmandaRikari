@@ -99,14 +99,14 @@ router.get('/dashboard', async (req: AuthedRequest, res) => {
   const monthKey = monthKeyOffset(monthOffset);
   const monthTx = data.transactions.filter((t) => monthKeyOf(t.date) === monthKey);
 
-  // Caixa is cash-basis: a package sale counts in full (money really came
-  // in), but a session-use recognition doesn't add a second time (no new
-  // cash moved) — cashDelta(receita) encodes that, despesa has no such
-  // distinction so it's summed plainly.
+  // Caixa is cash-basis on both sides: a package sale counts in full (money
+  // really came in) but a session-use recognition doesn't add again; an
+  // accrued room fee doesn't subtract until the month's bill is actually
+  // paid. cashDelta encodes all of that.
   const receitasTotal = monthTx.filter((t) => t.type === 'receita').reduce((a, t) => a + cashDelta(t), 0);
-  const despesasTotal = monthTx.filter((t) => t.type === 'despesa').reduce((a, t) => a + t.amount, 0);
+  const despesasTotal = monthTx.filter((t) => t.type === 'despesa').reduce((a, t) => a - cashDelta(t), 0);
   const receitasOp = monthTx.filter((t) => t.type === 'receita' && !t.capital).reduce((a, t) => a + cashDelta(t), 0);
-  const despesasOp = monthTx.filter((t) => t.type === 'despesa' && !t.capital).reduce((a, t) => a + t.amount, 0);
+  const despesasOp = monthTx.filter((t) => t.type === 'despesa' && !t.capital).reduce((a, t) => a - cashDelta(t), 0);
 
   const svcTx = monthTx.filter((t) => t.type === 'receita' && t.serviceId && t.variableCost != null);
   const custoVariavelTotal = svcTx.reduce((a, t) => a + (t.variableCost || 0), 0);
@@ -119,7 +119,7 @@ router.get('/dashboard', async (req: AuthedRequest, res) => {
     .map((c) => ({
       id: c.id,
       name: (c as any).name as string,
-      amount: monthTx.filter((t) => t.type === 'despesa' && t.categoryId === c.id).reduce((a, t) => a + t.amount, 0),
+      amount: monthTx.filter((t) => t.type === 'despesa' && t.categoryId === c.id).reduce((a, t) => a - cashDelta(t), 0),
     }))
     .filter((c) => c.amount > 0)
     .sort((a, b) => b.amount - a.amount);
@@ -165,17 +165,17 @@ router.get('/dashboard-year', async (req: AuthedRequest, res) => {
   const year = new Date().getFullYear() + yearOffset;
   const yearTx = data.transactions.filter((t) => monthKeyOf(t.date).slice(0, 4) === String(year));
   const receitas = yearTx.filter((t) => t.type === 'receita').reduce((a, t) => a + cashDelta(t), 0);
-  const despesas = yearTx.filter((t) => t.type === 'despesa').reduce((a, t) => a + t.amount, 0);
+  const despesas = yearTx.filter((t) => t.type === 'despesa').reduce((a, t) => a - cashDelta(t), 0);
   const lucroOp =
     yearTx.filter((t) => t.type === 'receita' && !t.capital).reduce((a, t) => a + cashDelta(t), 0) -
-    yearTx.filter((t) => t.type === 'despesa' && !t.capital).reduce((a, t) => a + t.amount, 0);
+    yearTx.filter((t) => t.type === 'despesa' && !t.capital).reduce((a, t) => a - cashDelta(t), 0);
 
   const monthsInYear = [];
   for (let i = 0; i < 12; i++) {
     const mk = `${year}-${String(i + 1).padStart(2, '0')}`;
     const mTx = data.transactions.filter((t) => monthKeyOf(t.date) === mk);
     const rec = mTx.filter((t) => t.type === 'receita').reduce((a, t) => a + cashDelta(t), 0);
-    const desp = mTx.filter((t) => t.type === 'despesa').reduce((a, t) => a + t.amount, 0);
+    const desp = mTx.filter((t) => t.type === 'despesa').reduce((a, t) => a - cashDelta(t), 0);
     monthsInYear.push({ month: i, monthKey: mk, receita: rec, despesa: desp, saldo: rec - desp });
   }
   res.json({ year, receitas, despesas, lucroOp, monthsInYear });

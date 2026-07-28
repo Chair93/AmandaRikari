@@ -79,9 +79,12 @@ router.post('/:id/settle', async (req: AuthedRequest, res) => {
         clientId: b.clientId,
         date: todayStr(),
         // A package installment payoff moves cash but was already "sold" —
-        // its revenue gets recognized per-session (see packages.ts), not here.
+        // its revenue gets recognized per-session (see packages.ts), not
+        // here. Same idea for the room-fee bill: each atendimento already
+        // expensed its share when it accrued, so paying the owner is cash
+        // out with no second hit to the DRE.
         variableCost: type === 'receita' && !b.packageId ? 0 : null,
-        cashOnly: !!b.packageId,
+        cashOnly: !!b.packageId || b.sala,
         packageId: b.packageId,
         note: b.desc,
       },

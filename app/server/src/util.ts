@@ -10,6 +10,12 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+/** 'YYYY-MM' → 'YYYY-MM-DD' of that month's last day. */
+export function lastDayOfMonth(monthKey: string): string {
+  const [y, m] = monthKey.split('-').map(Number);
+  return `${monthKey}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+}
+
 /** Parses a Brazilian-formatted number, or null when the input isn't a clean
  *  number. Mirrors web/src/format.ts parseNumberBR — kept in sync so a value
  *  means the same thing on both sides of the wire. See that file for why the

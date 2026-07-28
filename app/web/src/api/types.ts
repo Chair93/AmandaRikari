@@ -159,6 +159,9 @@ export interface Settings {
   salaMode: 'off' | 'fixo' | 'pct';
   salaFixo: number;
   salaPct: number;
+  salaOwner: string;
+  /** WhatsApp reminder template ({nome}/{data}/{hora}/{servico}); '' = default. */
+  waTemplate: string;
   agendaStartHour: number;
   agendaEndHour: number;
   agendaSlotMin: number;

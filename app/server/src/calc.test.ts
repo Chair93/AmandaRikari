@@ -156,6 +156,11 @@ describe('isOpExpense / isRevenueTx', () => {
     expect(isOpExpense(tx({ type: 'despesa', amount: 10, date: '2026-01-01', categoryId: 'invest-cat' }), categories)).toBe(false);
   });
 
+  it('counts an accrued room fee once: at accrual, not again when the bill is paid', () => {
+    expect(isOpExpense(tx({ type: 'despesa', amount: 40, date: '2026-01-01', categoryId: 'cat', accrualOnly: true }), categories)).toBe(true);
+    expect(isOpExpense(tx({ type: 'despesa', amount: 40, date: '2026-01-01', categoryId: 'cat', cashOnly: true }), categories)).toBe(false);
+  });
+
   it('excludes cashOnly (package sale/installment) and sócio receitas from revenue, includes accrualOnly', () => {
     expect(isRevenueTx(tx({ type: 'receita', amount: 500, date: '2026-01-01', cashOnly: true }))).toBe(false);
     expect(isRevenueTx(tx({ type: 'receita', amount: 500, date: '2026-01-01', capital: 'aporte' }))).toBe(false);
@@ -171,8 +176,10 @@ describe('cashDelta', () => {
     expect(cashDelta(tx({ type: 'despesa', amount: 40, date: '2026-01-01' }))).toBe(-40);
   });
 
-  it('is zero for accrualOnly revenue — recognizing a session does not move new cash', () => {
+  it('is zero for accrualOnly on both sides — session revenue and accrued room fees move no cash', () => {
     expect(cashDelta(tx({ type: 'receita', amount: 100, date: '2026-01-01', accrualOnly: true }))).toBe(0);
+    expect(cashDelta(tx({ type: 'despesa', amount: 40, date: '2026-01-01', accrualOnly: true }))).toBe(0);
+    expect(cashDelta(tx({ type: 'despesa', amount: 40, date: '2026-01-01', cashOnly: true }))).toBe(-40);
   });
 });
 

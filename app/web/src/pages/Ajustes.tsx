@@ -17,6 +17,7 @@ import { api, ApiError } from '../api/client';
 import { changePassword } from '../auth/passwordApi';
 import { useAuth } from '../auth/AuthContext';
 import { numOr0, todayStr } from '../format';
+import { fillWaTemplate, WA_TEMPLATE_PADRAO } from '../waTemplate';
 import { loadXlsx, parseSheetDate, parseSheetNumber, pickField } from '../xlsx';
 import type { Role, Settings } from '../api/types';
 
@@ -201,6 +202,7 @@ export default function Ajustes() {
         <div className="page">
           {settings && <SettingsCard settings={settings} />}
           {settings && <ReceiptCard settings={settings} />}
+          {settings && <WaTemplateCard settings={settings} />}
 
           <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
@@ -394,6 +396,61 @@ function TeamCard() {
   );
 }
 
+/** The Agenda's WhatsApp reminder message, editable with placeholders that
+ *  fill themselves from each appointment. A live preview shows exactly what
+ *  a client would receive. */
+function WaTemplateCard({ settings }: { settings: Settings }) {
+  const { isOwner } = useAuth();
+  const saveSettings = useSaveSettings();
+  const [draft, setDraft] = useState(settings.waTemplate || '');
+
+  const preview = fillWaTemplate(draft, {
+    clientName: 'Mariana Silva',
+    date: todayStr(),
+    time: '14:30',
+    serviceName: 'Limpeza de pele',
+  });
+
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Mensagem do WhatsApp (Agenda)</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1, maxWidth: 520, lineHeight: 1.5 }}>
+          É o lembrete enviado pelo botão da Agenda. Escreva do seu jeito — <strong>{'{nome}'}</strong>, <strong>{'{data}'}</strong>, <strong>{'{hora}'}</strong> e <strong>{'{servico}'}</strong> são preenchidos automaticamente com os dados de cada agendamento.
+        </div>
+      </div>
+      <fieldset disabled={!isOwner} style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <textarea
+          className="input"
+          rows={3}
+          style={{ resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
+          placeholder={WA_TEMPLATE_PADRAO}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => saveSettings.mutate({ waTemplate: draft.trim() })}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {draft.trim() !== '' && (
+            <button
+              className="pill ghost sm"
+              onClick={() => {
+                setDraft('');
+                saveSettings.mutate({ waTemplate: '' });
+              }}
+            >
+              Voltar pra mensagem padrão
+            </button>
+          )}
+        </div>
+        <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '10px 14px', fontSize: 12.5, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 3 }}>Como a cliente Mariana receberia hoje:</div>
+          {preview}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
 /** Issuer data printed on receipts. Same draft-on-blur pattern as
  *  SettingsCard, but these are free-text fields, not numbers. */
 function ReceiptCard({ settings }: { settings: Settings }) {
@@ -464,6 +521,8 @@ function SettingsCard({ settings }: { settings: Settings }) {
     salaFixo: settings.salaFixo ? String(settings.salaFixo).replace('.', ',') : '',
     salaPct: settings.salaPct ? String(settings.salaPct).replace('.', ',') : '',
   });
+  // Free-text, so it can't go through the numeric commit() below.
+  const [salaOwnerDraft, setSalaOwnerDraft] = useState(settings.salaOwner || '');
 
   function commit(key: keyof typeof draft) {
     saveSettings.mutate({ [key]: numOr0(draft[key]) } as never);
@@ -532,8 +591,18 @@ function SettingsCard({ settings }: { settings: Settings }) {
           {settings.salaMode === 'fixo' && <input className="input" style={{ width: 100 }} inputMode="decimal" placeholder="0,00" {...bind('salaFixo')} />}
           {settings.salaMode === 'pct' && <input className="input" style={{ width: 70 }} inputMode="decimal" placeholder="Ex: 20" {...bind('salaPct')} />}
         </div>
+        {settings.salaMode !== 'off' && (
+          <input
+            className="input"
+            style={{ maxWidth: 240 }}
+            placeholder="Nome da dona do espaço"
+            value={salaOwnerDraft}
+            onChange={(e) => setSalaOwnerDraft(e.target.value)}
+            onBlur={() => saveSettings.mutate({ salaOwner: salaOwnerDraft.trim() })}
+          />
+        )}
         <span style={{ fontWeight: 500, fontSize: 11 }}>
-          Se você atende num espaço de outra pessoa, o custo vira despesa automática a cada atendimento — igual à taxa da maquininha. Vale também pra sessões de pacote.
+          Cada atendimento (inclusive sessão de pacote) soma o valor numa conta a pagar do mês, em nome da dona do espaço, na aba Contas. O custo já conta no resultado do mês; o dinheiro só sai do caixa quando você quitar a conta.
         </span>
       </div>
       <div className="field">

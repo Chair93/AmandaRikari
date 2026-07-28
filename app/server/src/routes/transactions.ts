@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { computeServiceCost, feePctFor, salaFeeAmount } from '../calc.js';
 import { assertOwned } from '../ownership.js';
+import { adjustSalaBill } from '../sala.js';
 import { round2, todayStr } from '../util.js';
 
 const router = Router();
@@ -168,9 +169,13 @@ router.post('/', async (req: AuthedRequest, res) => {
     }
     if (salaAmount > 0) {
       const scat = await findOrCreateCategory(businessId, 'Uso de sala', 'despesa');
+      // accrualOnly: the fee is owed the moment the atendimento happens (it
+      // counts against this month's result), but no cash leaves until the
+      // accumulated monthly bill to the room owner is settled in Contas.
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, note: 'Uso da sala' },
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, accrualOnly: true, note: 'Uso da sala' },
       });
+      await adjustSalaBill(tx, businessId, d.date, salaAmount, ctx.settings.salaOwner || '');
     }
     return created;
   });
@@ -255,7 +260,11 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     });
 
     // Replace the machine-fee and room-fee expenses tied to this transaction.
+    // The room fee is the accrualOnly one — its old amount also has to come
+    // back out of the month's accumulated bill to the room owner.
+    const oldSalaFee = await tx.transaction.findFirst({ where: { feeOf: existing.id, accrualOnly: true } });
     await tx.transaction.deleteMany({ where: { feeOf: existing.id } });
+    if (oldSalaFee) await adjustSalaBill(tx, businessId, oldSalaFee.date, -oldSalaFee.amount, ctx.settings.salaOwner || '');
     if (feeAmount > 0) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
@@ -265,8 +274,9 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     if (salaAmount > 0) {
       const scat = await findOrCreateCategory(businessId, 'Uso de sala', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: existing.id, note: 'Uso da sala' },
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: existing.id, accrualOnly: true, note: 'Uso da sala' },
       });
+      await adjustSalaBill(tx, businessId, d.date, salaAmount, ctx.settings.salaOwner || '');
     }
     return updated;
   });
@@ -280,6 +290,10 @@ router.delete('/:id', async (req: AuthedRequest, res) => {
     for (const sl of existing.sales) {
       await tx.product.update({ where: { id: sl.productId }, data: { stock: { increment: sl.qty } } });
     }
+    // Room fee going away → its share leaves the month's bill too (negative
+    // delta never creates a bill, so the owner name doesn't matter here).
+    const salaFee = await tx.transaction.findFirst({ where: { feeOf: existing.id, accrualOnly: true } });
+    if (salaFee) await adjustSalaBill(tx, req.businessId!, salaFee.date, -salaFee.amount, '');
     await tx.transaction.deleteMany({ where: { OR: [{ id: existing.id }, { feeOf: existing.id }] } });
   });
   res.status(204).end();
