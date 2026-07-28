@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMaskPref } from '../maskPref';
 import PageHeader from '../components/PageHeader';
 import PeriodNav, { type PeriodMode } from '../components/PeriodNav';
 import { useReconcile, useReconciliation, useResultadoReport } from '../api/hooks';
@@ -68,7 +69,7 @@ export default function Resultado() {
   const [mode, setMode] = useState<PeriodMode>('month');
   const [monthOffset, setMonthOffset] = useState(0);
   const [yearOffset, setYearOffset] = useState(0);
-  const [showMargin, setShowMargin] = useState(false);
+  const [showMargin, setShowMargin] = useMaskPref();
   const { data, isLoading, error, refetch } = useResultadoReport(mode, monthOffset, yearOffset);
   const mask = (label: string) => maskable(label, showMargin);
   const year = new Date().getFullYear() + yearOffset;
@@ -101,7 +102,7 @@ export default function Resultado() {
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <PeriodNav mode={mode} onModeChange={setMode} monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} yearOffset={yearOffset} onYearOffsetChange={setYearOffset} monthLabel={monthLabelFromOffset(monthOffset)} yearLabel={String(year)} />
-            <button className="pill" onClick={() => setShowMargin((v) => !v)}>
+            <button className="pill" onClick={() => setShowMargin(!showMargin)}>
               {showMargin ? 'Margem visível' : 'Margem oculta'}
             </button>
           </div>

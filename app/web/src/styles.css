@@ -1692,15 +1692,21 @@ select.input:focus {
      A word read left-to-right beside its icon is quicker than one set at
      9.5px underneath it. Collapses back to icons for anyone who wants the
      width — the choice is remembered. */
+  /* Width lives in a variable so the collapse handle can ride the border. */
+  .app-shell {
+    --nav-w: 208px;
+  }
+  .app-shell.nav-collapsed {
+    --nav-w: 96px;
+  }
   .app-nav {
-    width: 208px;
+    width: var(--nav-w);
     align-items: stretch;
     padding: 22px 12px 84px;
     gap: 2px;
     transition: width 0.16s ease;
   }
   .nav-collapsed .app-nav {
-    width: 96px;
     align-items: center;
     padding-left: 0;
     padding-right: 0;
@@ -1760,35 +1766,59 @@ select.input:focus {
     left: -12px;
   }
 
+  /* Straddles the rail's right border instead of stacking over the last nav
+     items — inside the column it sat on top of "Ajustes" whenever the list
+     scrolled. Fixed elements still inherit custom properties, so it follows
+     --nav-w when the rail collapses. */
   .nav-collapse {
     all: unset;
     cursor: pointer;
-    display: flex;
     position: fixed;
-    left: 80px;
-    bottom: 28px;
+    left: calc(var(--nav-w) - 14px);
+    top: 76px;
     z-index: 26;
-    width: 40px;
-    height: 40px;
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--idle-color);
-    background: var(--surface-2);
-    transition: transform 0.16s ease, left 0.16s ease;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+    transition: left 0.16s ease, color 0.12s ease;
   }
-  .nav-collapsed .nav-collapse {
-    left: 28px;
-    bottom: 76px;
+  .nav-collapsed .nav-collapse svg {
     transform: rotate(180deg);
   }
   .nav-collapse:hover {
     color: var(--active-color);
+    border-color: var(--border-strong);
   }
   .nav-collapse:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+
+  /* The theme toggle joins the collapse handle on the rail edge — floating
+     over the column, both sat on top of whatever the list scrolled under
+     them. Two small chips on the border read as one control group. */
+  .theme-toggle {
+    left: calc(var(--nav-w) - 14px);
+    top: 112px;
+    right: auto;
+    bottom: auto;
+    width: 28px;
+    height: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
+    transition: left 0.16s ease, color 0.12s ease;
+  }
+  .theme-toggle:hover {
+    color: var(--active-color);
+    border-color: var(--border-strong);
   }
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMaskPref } from '../maskPref';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import PeriodNav, { type PeriodMode } from '../components/PeriodNav';
@@ -15,7 +16,7 @@ export default function Dashboard() {
   const [mode, setMode] = useState<PeriodMode>('month');
   const [monthOffset, setMonthOffset] = useState(0);
   const [yearOffset, setYearOffset] = useState(0);
-  const [showMargin, setShowMargin] = useState(false);
+  const [showMargin, setShowMargin] = useMaskPref();
   const [txModal, setTxModal] = useState<{ open: boolean; editId?: string }>({ open: false });
   const [prolaboreOpen, setProlaboreOpen] = useState(false);
 
@@ -46,7 +47,7 @@ export default function Dashboard() {
               monthLabel={monthLabelFromOffset(monthOffset)}
               yearLabel={String(year)}
             />
-            <button className="pill" onClick={() => setShowMargin((v) => !v)}>
+            <button className="pill" onClick={() => setShowMargin(!showMargin)}>
               {showMargin ? 'Margem visível' : 'Margem oculta'}
             </button>
             {isOwner && (
