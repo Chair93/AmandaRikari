@@ -314,6 +314,7 @@ function serializeTx(t: TxRow & { id: string }, data: Awaited<ReturnType<typeof 
         data.equipment.find((x) => x.id === (t as { equipmentId?: string | null }).equipmentId)?.name ||
         data.products.find((x) => x.id === t.sales?.[0]?.productId)?.name ||
         null,
+    payment: t.payment,
     variableCost: t.variableCost,
     hasMargem: t.type === 'receita' && t.variableCost != null,
     margem: t.variableCost != null ? t.amount - t.variableCost : null,

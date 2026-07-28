@@ -200,6 +200,7 @@ export default function Ajustes() {
       <div className="scroll-area">
         <div className="page">
           {settings && <SettingsCard settings={settings} />}
+          {settings && <ReceiptCard settings={settings} />}
 
           <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
@@ -393,6 +394,56 @@ function TeamCard() {
   );
 }
 
+/** Issuer data printed on receipts. Same draft-on-blur pattern as
+ *  SettingsCard, but these are free-text fields, not numbers. */
+function ReceiptCard({ settings }: { settings: Settings }) {
+  const { isOwner } = useAuth();
+  const saveSettings = useSaveSettings();
+  const [draft, setDraft] = useState({
+    receiptDoc: settings.receiptDoc || '',
+    receiptPhone: settings.receiptPhone || '',
+    receiptAddress: settings.receiptAddress || '',
+    receiptCity: settings.receiptCity || '',
+  });
+
+  function bind(key: keyof typeof draft) {
+    return {
+      value: draft[key],
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [key]: e.target.value })),
+      onBlur: () => saveSettings.mutate({ [key]: draft[key].trim() } as never),
+    };
+  }
+
+  return (
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Dados do recibo</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1, maxWidth: 480, lineHeight: 1.5 }}>
+          Aparecem no recibo enviado pra cliente — e já deixam tudo pronto pra quando você for emitir nota fiscal.
+        </div>
+      </div>
+      <fieldset disabled={!isOwner} style={{ border: 'none', margin: 0, padding: 0, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <label className="field" style={{ width: 180 }}>
+          CPF ou CNPJ
+          <input className="input" placeholder="000.000.000-00" {...bind('receiptDoc')} />
+        </label>
+        <label className="field" style={{ width: 160 }}>
+          Telefone
+          <input className="input" inputMode="tel" placeholder="(11) 90000-0000" {...bind('receiptPhone')} />
+        </label>
+        <label className="field" style={{ width: 280 }}>
+          Endereço
+          <input className="input" placeholder="Rua, número, bairro" {...bind('receiptAddress')} />
+        </label>
+        <label className="field" style={{ width: 180 }}>
+          Cidade
+          <input className="input" placeholder="São Paulo — SP" {...bind('receiptCity')} />
+        </label>
+      </fieldset>
+    </div>
+  );
+}
+
 /** Owns its own draft strings so typing "1,5" doesn't get clobbered by the
  *  round-trip through the server on every keystroke — commits on blur. */
 function SettingsCard({ settings }: { settings: Settings }) {
@@ -497,6 +548,32 @@ function SettingsCard({ settings }: { settings: Settings }) {
         </span>
         <span style={{ fontSize: 12.5, color: 'var(--text)', maxWidth: 220 }}>
           <strong>Resumo diário por e-mail</strong> — contas vencendo, estoque baixo e clientes sumidos, toda manhã
+        </span>
+      </button>
+      <button
+        onClick={() => saveSettings.mutate({ emailBackupEnabled: !settings.emailBackupEnabled })}
+        style={{ all: 'unset', cursor: isOwner ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'var(--surface-2)', alignSelf: 'flex-start' }}
+      >
+        <span
+          style={{
+            width: 18,
+            height: 18,
+            flex: 'none',
+            borderRadius: 6,
+            border: '2px solid var(--accent)',
+            background: settings.emailBackupEnabled ? 'var(--accent)' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          {settings.emailBackupEnabled ? '✓' : ''}
+        </span>
+        <span style={{ fontSize: 12.5, color: 'var(--text)', maxWidth: 220 }}>
+          <strong>Backup por e-mail no fim do dia</strong> — só chega quando algo mudou; se nada mudou, nada é enviado
         </span>
       </button>
       </fieldset>

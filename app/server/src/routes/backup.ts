@@ -7,9 +7,9 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireOwnerForWrites);
 
-/** Full JSON export — same shape usable for backup and re-import. */
-router.get('/', async (req: AuthedRequest, res) => {
-  const businessId = req.businessId!;
+/** Full JSON export — same shape usable for backup, re-import and the
+ *  nightly e-mail backup. */
+export async function exportBusiness(businessId: string) {
   const [categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments] = await Promise.all([
     prisma.category.findMany({ where: { businessId } }),
     prisma.client.findMany({ where: { businessId } }),
@@ -23,7 +23,11 @@ router.get('/', async (req: AuthedRequest, res) => {
     prisma.settings.findUnique({ where: { businessId } }),
     prisma.appointment.findMany({ where: { businessId } }),
   ] as const);
-  res.json({ categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, exportedAt: new Date().toISOString() });
+  return { categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, exportedAt: new Date().toISOString() };
+}
+
+router.get('/', async (req: AuthedRequest, res) => {
+  res.json(await exportBusiness(req.businessId!));
 });
 
 const restoreSchema = z.object({

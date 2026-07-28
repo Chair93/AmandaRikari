@@ -150,6 +150,11 @@ export interface Settings {
   taxaDebito: number;
   taxaPix: number;
   emailDigestEnabled: boolean;
+  emailBackupEnabled: boolean;
+  receiptDoc: string;
+  receiptPhone: string;
+  receiptAddress: string;
+  receiptCity: string;
   agendaStartHour: number;
   agendaEndHour: number;
   agendaSlotMin: number;
@@ -260,6 +265,7 @@ export interface TxSummary {
   margem: number | null;
   cashOnly: boolean;
   accrualOnly: boolean;
+  payment: string | null;
 }
 
 export interface DashboardYearData {

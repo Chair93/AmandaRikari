@@ -130,7 +130,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
                     <button
                       className="pill ghost sm"
                       onClick={() =>
-                        setSubModal({ kind: 'receipt', date: tx.date, serviceName: tx.categoryName, amount: tx.amount, payment: null })
+                        setSubModal({ kind: 'receipt', date: tx.date, serviceName: tx.categoryName, amount: tx.amount, payment: tx.payment })
                       }
                     >
                       recibo

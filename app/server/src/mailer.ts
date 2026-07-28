@@ -18,8 +18,13 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendMail(opts: { to: string; subject: string; text: string }): Promise<void> {
+export async function sendMail(opts: {
+  to: string;
+  subject: string;
+  text: string;
+  attachments?: { filename: string; content: string; contentType?: string }[];
+}): Promise<void> {
   if (!isMailerConfigured()) return;
   const from = process.env.SMTP_FROM || process.env.SMTP_USER!;
-  await getTransporter().sendMail({ from, to: opts.to, subject: opts.subject, text: opts.text });
+  await getTransporter().sendMail({ from, to: opts.to, subject: opts.subject, text: opts.text, attachments: opts.attachments });
 }

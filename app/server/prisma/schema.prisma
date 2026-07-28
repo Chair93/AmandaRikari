@@ -279,6 +279,14 @@ model Settings {
   taxaDebito        Float    @default(0)
   taxaPix           Float    @default(0)
   emailDigestEnabled Boolean @default(false)
+  /// Nightly e-mail with the full JSON backup — sent only when something
+  /// changed since the last one that went out. Opt-out: it's a safety net.
+  emailBackupEnabled Boolean @default(true)
+  /// Issuer block printed on receipts (and, one day, invoices).
+  receiptDoc         String  @default("") // CPF/CNPJ
+  receiptPhone       String  @default("")
+  receiptAddress     String  @default("")
+  receiptCity        String  @default("")
   agendaStartHour    Int     @default(9)
   agendaEndHour      Int     @default(19)
   agendaSlotMin      Int     @default(30)

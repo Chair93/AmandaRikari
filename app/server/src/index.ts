@@ -11,6 +11,7 @@ import { pinoHttp } from 'pino-http';
 import cron from 'node-cron';
 import { sendDailyDigests } from './digest.js';
 import { runDailyBackup } from './dbBackup.js';
+import { sendBackupEmails } from './emailBackup.js';
 import { prisma } from './db.js';
 import { log } from './log.js';
 import { OwnershipError } from './ownership.js';
@@ -139,6 +140,12 @@ cron.schedule('0 8 * * *', () => {
 
 cron.schedule('30 3 * * *', () => {
   runDailyBackup().catch((e) => log.error({ err: e }, 'falha no backup automático'));
+});
+
+// 01:00 UTC = 22:00 em Brasília — fim do dia de trabalho. Só envia quando o
+// conteúdo mudou desde o último backup que realmente saiu.
+cron.schedule('0 1 * * *', () => {
+  sendBackupEmails().catch((e) => log.error({ err: e }, 'falha no backup por e-mail'));
 });
 
 const PORT = Number(process.env.PORT) || 4000;
