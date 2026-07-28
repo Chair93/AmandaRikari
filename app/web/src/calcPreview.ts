@@ -34,10 +34,29 @@ export function computeServiceCostPreview(
   }, 0);
 }
 
-export function feePctForPreview(method: string | null | undefined, settings: Settings | undefined): number {
+export function feePctForPreview(method: string | null | undefined, settings: Settings | undefined, parcelas?: number): number {
   if (!settings) return 0;
-  if (method === 'credito') return numOr0(settings.taxaCredito);
+  if (method === 'credito') {
+    if (parcelas && parcelas >= 2) {
+      try {
+        const table = JSON.parse(settings.taxaCreditoParcelas || '{}') as Record<string, unknown>;
+        const pct = Number(table[String(parcelas)]);
+        if (isFinite(pct) && pct > 0) return pct;
+      } catch {
+        // malformed — base rate below
+      }
+    }
+    return numOr0(settings.taxaCredito);
+  }
   if (method === 'debito') return numOr0(settings.taxaDebito);
   if (method === 'pix') return numOr0(settings.taxaPix);
+  return 0;
+}
+
+/** Room fee this atendimento would accrue (mirror of server salaFeeAmount). */
+export function salaFeePreview(amount: number, settings: Settings | undefined): number {
+  if (!settings) return 0;
+  if (settings.salaMode === 'fixo') return numOr0(settings.salaFixo);
+  if (settings.salaMode === 'pct') return (amount * numOr0(settings.salaPct)) / 100;
   return 0;
 }

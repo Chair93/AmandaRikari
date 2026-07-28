@@ -26,6 +26,7 @@ const bodySchema = z.object({
   sales: z.array(saleSchema).optional(),
   distanciaKm: z.number().optional().nullable(),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
+  parcelas: z.number().int().min(1).max(24).optional().nullable(),
   // sócio (partner) fields — when `capital` is set this is a contribution/payout, not a normal tx
   capital: z.enum(['aporte', 'pagamento']).optional().nullable(),
   capitalKind: z.enum(['capital', 'emprestimo']).optional().nullable(),
@@ -131,7 +132,8 @@ router.post('/', async (req: AuthedRequest, res) => {
     return { productId: sl.productId, qty: sl.qty, unitPrice: p ? p.salePrice : 0, unitCost: p ? p.avgCost || p.packageCost : 0 };
   });
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
-  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings) : 0;
+  const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
+  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
   // Room rental is charged per atendimento — a receita tied to a service.
   // Plain product sales or loose receitas don't use the rented room.
@@ -151,6 +153,7 @@ router.post('/', async (req: AuthedRequest, res) => {
         date: d.date,
         note: d.note || null,
         payment: payMethod,
+        parcelas,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
         sales: { create: salesData },
       },
@@ -164,7 +167,7 @@ router.post('/', async (req: AuthedRequest, res) => {
     if (feeAmount > 0) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: created.id, note: `Taxa ${PAY_LABEL[payMethod!]}` },
+        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: created.id, note: `Taxa ${PAY_LABEL[payMethod!]}${parcelas && parcelas > 1 ? ` ${parcelas}x` : ""}` },
       });
     }
     if (salaAmount > 0) {
@@ -223,7 +226,8 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     return { productId: sl.productId, qty: sl.qty, unitPrice: p ? p.salePrice : 0, unitCost: p ? p.avgCost || p.packageCost : 0 };
   });
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
-  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings) : 0;
+  const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
+  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
   const salaAmount = d.type === 'receita' && d.serviceId ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
 
@@ -251,6 +255,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
         date: d.date,
         note: d.note || null,
         payment: payMethod,
+        parcelas,
         capital: null,
         socio: null,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
@@ -268,7 +273,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     if (feeAmount > 0) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: existing.id, note: `Taxa ${PAY_LABEL[payMethod!]}` },
+        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: existing.id, note: `Taxa ${PAY_LABEL[payMethod!]}${parcelas && parcelas > 1 ? ` ${parcelas}x` : ""}` },
       });
     }
     if (salaAmount > 0) {

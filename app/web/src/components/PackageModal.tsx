@@ -15,6 +15,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
   const [payment, setPayment] = useState('pix');
   const [mode, setMode] = useState<'avista' | 'prazo'>('avista');
   const [parcelas, setParcelas] = useState('3');
+  const [parcelasCartao, setParcelasCartao] = useState(1);
   const [primeiroVenc, setPrimeiroVenc] = useState(todayStr());
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         payment,
         mode,
         parcelas: mode === 'prazo' ? Math.max(1, Math.round(numOr0(parcelas))) : undefined,
+        parcelasCartao: mode === 'avista' && payment === 'credito' ? parcelasCartao : undefined,
         primeiroVenc: mode === 'prazo' ? primeiroVenc : undefined,
       });
       onClose();
@@ -113,6 +115,16 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
               </option>
             ))}
           </select>
+          {payment === 'credito' && (
+            <select className="input" style={{ marginTop: 6 }} value={parcelasCartao} onChange={(e) => setParcelasCartao(Number(e.target.value))}>
+              <option value={1}>1x — à vista (ou juros por conta do cliente)</option>
+              {Array.from({ length: 11 }, (_, i) => i + 2).map((x) => (
+                <option key={x} value={x}>
+                  {x}x — taxa sua
+                </option>
+              ))}
+            </select>
+          )}
         </label>
       ) : (
         <div className="field-row">

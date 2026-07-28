@@ -217,6 +217,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
         taxaCredito: d.settings.taxaCredito || 0,
         taxaDebito: d.settings.taxaDebito || 0,
         taxaPix: d.settings.taxaPix || 0,
+        taxaCreditoParcelas: d.settings.taxaCreditoParcelas || '{}',
         emailDigestEnabled: !!d.settings.emailDigestEnabled,
         emailBackupEnabled: d.settings.emailBackupEnabled ?? true,
         receiptDoc: d.settings.receiptDoc || '',

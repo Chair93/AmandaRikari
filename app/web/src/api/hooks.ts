@@ -199,6 +199,7 @@ export interface TxInput {
   sales?: { productId: string; qty: number }[];
   distanciaKm?: number | null;
   payment?: string | null;
+  parcelas?: number | null;
   capital?: 'aporte' | 'pagamento' | null;
   capitalKind?: 'capital' | 'emprestimo' | null;
   socio?: string | null;
@@ -287,6 +288,8 @@ export interface PackageInput {
   payment: string;
   mode: 'avista' | 'prazo';
   parcelas?: number;
+  /** Credit-card installments on an à-vista sale (fee table lookup). */
+  parcelasCartao?: number;
   primeiroVenc?: string;
 }
 export function useSavePackage() {

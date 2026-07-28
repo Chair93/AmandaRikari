@@ -112,6 +112,16 @@ describe('feePctFor', () => {
     expect(feePctFor('dinheiro', settings)).toBe(0);
     expect(feePctFor(null, settings)).toBe(0);
   });
+
+  it('uses the per-installment credit table, falling back to the base rate', () => {
+    const s = { ...settings, taxaCreditoParcelas: '{"2":6.09,"3":6.85}' };
+    expect(feePctFor('credito', s, 2)).toBe(6.09);
+    expect(feePctFor('credito', s, 3)).toBe(6.85);
+    expect(feePctFor('credito', s, 1)).toBe(4); // à vista / juros por conta do cliente
+    expect(feePctFor('credito', s, 12)).toBe(4); // count not configured → base rate
+    expect(feePctFor('credito', { ...settings, taxaCreditoParcelas: 'not json' }, 2)).toBe(4);
+    expect(feePctFor('debito', s, 3)).toBe(2); // installments only mean something on credit
+  });
 });
 
 describe('salaFeeAmount', () => {

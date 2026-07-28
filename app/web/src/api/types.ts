@@ -122,6 +122,7 @@ export interface Transaction {
   capitalKind: 'capital' | 'emprestimo' | null;
   socio: string | null;
   payment: PaymentMethod | null;
+  parcelas: number | null;
   feeOf: string | null;
   prolabore: boolean;
   estoque: boolean;
@@ -149,6 +150,8 @@ export interface Settings {
   taxaCredito: number;
   taxaDebito: number;
   taxaPix: number;
+  /** JSON map: credit fee % per installment count ({"2":6.09,...}); 1x uses taxaCredito. */
+  taxaCreditoParcelas: string;
   emailDigestEnabled: boolean;
   emailBackupEnabled: boolean;
   receiptDoc: string;

@@ -203,6 +203,9 @@ model Transaction {
   socio       String?
 
   payment String? // 'dinheiro' | 'pix' | 'debito' | 'credito'
+  /// Credit-card installment count (null/1 = à vista). Drives which fee %
+  /// applies and is kept so editing the transaction recomputes correctly.
+  parcelas Int?
   feeOf   String? // id of the tx this machine-fee expense belongs to
 
   prolabore Boolean @default(false)
@@ -278,6 +281,9 @@ model Settings {
   taxaCredito       Float    @default(0)
   taxaDebito        Float    @default(0)
   taxaPix           Float    @default(0)
+  /// JSON map of credit-card fee % per installment count ({"2":6.09,...}).
+  /// 1x uses taxaCredito; counts missing from the map fall back to it too.
+  taxaCreditoParcelas String @default("{}")
   emailDigestEnabled Boolean @default(false)
   /// Nightly e-mail with the full JSON backup — sent only when something
   /// changed since the last one that went out. Opt-out: it's a safety net.

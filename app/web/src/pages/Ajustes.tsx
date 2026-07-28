@@ -524,6 +524,25 @@ function SettingsCard({ settings }: { settings: Settings }) {
   // Free-text, so it can't go through the numeric commit() below.
   const [salaOwnerDraft, setSalaOwnerDraft] = useState(settings.salaOwner || '');
 
+  // Credit fee % per installment count, edited as one draft string per count
+  // and saved back as the JSON map the server stores.
+  const [parcelasDraft, setParcelasDraft] = useState<Record<number, string>>(() => {
+    try {
+      const table = JSON.parse(settings.taxaCreditoParcelas || '{}') as Record<string, number>;
+      return Object.fromEntries(Array.from({ length: 11 }, (_, i) => i + 2).map((n) => [n, table[n] != null ? String(table[n]).replace('.', ',') : '']));
+    } catch {
+      return Object.fromEntries(Array.from({ length: 11 }, (_, i) => [i + 2, '']));
+    }
+  });
+  function commitParcelas() {
+    const table: Record<string, number> = {};
+    for (const [n, raw] of Object.entries(parcelasDraft)) {
+      const v = numOr0(raw);
+      if (v > 0) table[n] = v;
+    }
+    saveSettings.mutate({ taxaCreditoParcelas: JSON.stringify(table) });
+  }
+
   function commit(key: keyof typeof draft) {
     saveSettings.mutate({ [key]: numOr0(draft[key]) } as never);
   }
@@ -571,6 +590,28 @@ function SettingsCard({ settings }: { settings: Settings }) {
           <input className="input" style={{ width: 78 }} inputMode="decimal" placeholder="Pix" {...bind('taxaPix')} />
         </div>
         <span style={{ fontWeight: 500, fontSize: 11 }}>Crédito · débito · Pix. A taxa vira despesa automática a cada recebimento.</span>
+        <details style={{ marginTop: 4 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 11.5, fontWeight: 600, color: 'var(--accent-text)' }}>Crédito parcelado — taxa por nº de parcelas</summary>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, maxWidth: 420 }}>
+            {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+              <label key={n} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 600 }}>
+                {n}x
+                <input
+                  className="input"
+                  style={{ width: 58, padding: '7px 8px', fontSize: 12 }}
+                  inputMode="decimal"
+                  placeholder="—"
+                  value={parcelasDraft[n] || ''}
+                  onChange={(e) => setParcelasDraft((d) => ({ ...d, [n]: e.target.value }))}
+                  onBlur={commitParcelas}
+                />
+              </label>
+            ))}
+          </div>
+          <span style={{ display: 'block', marginTop: 6, fontWeight: 500, fontSize: 11, maxWidth: 420 }}>
+            Preencha só as que sua maquininha cobra — parcela sem taxa preenchida usa a taxa de crédito normal. Se o cliente parcelar com juros por conta dele, lance como 1x.
+          </span>
+        </details>
       </div>
       <label className="field" style={{ width: 130 }}>
         Meta de faturamento mensal (R$)

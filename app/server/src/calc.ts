@@ -54,6 +54,8 @@ export type SettingsRow = {
   taxaCredito: number;
   taxaDebito: number;
   taxaPix: number;
+  /** JSON map: fee % per credit installment count ({"2":6.09,...}). */
+  taxaCreditoParcelas?: string;
   metaMensal: number;
   // Rented-room cost per atendimento. Optional so pre-existing fixtures and
   // callers that never touch sala logic keep compiling.
@@ -102,8 +104,22 @@ export function salaFeeAmount(amount: number, settings: SettingsRow): number {
   return 0;
 }
 
-export function feePctFor(method: string | null | undefined, settings: SettingsRow): number {
-  if (method === 'credito') return numOr0(settings.taxaCredito);
+export function feePctFor(method: string | null | undefined, settings: SettingsRow, parcelas?: number | null): number {
+  if (method === 'credito') {
+    // Card machines price each installment count differently. A count not in
+    // the table (or 1x — including "parcelado com juros por conta do
+    // cliente", where the seller pays the à vista rate) uses taxaCredito.
+    if (parcelas && parcelas >= 2) {
+      try {
+        const table = JSON.parse(settings.taxaCreditoParcelas || '{}') as Record<string, unknown>;
+        const pct = Number(table[String(parcelas)]);
+        if (isFinite(pct) && pct > 0) return pct;
+      } catch {
+        // malformed table — fall through to the base rate
+      }
+    }
+    return numOr0(settings.taxaCredito);
+  }
   if (method === 'debito') return numOr0(settings.taxaDebito);
   if (method === 'pix') return numOr0(settings.taxaPix);
   return 0;

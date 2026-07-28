@@ -4,7 +4,22 @@ import { useCategories, useClients, useDeleteTransaction, useEquipment, useProdu
 import { useAuth } from '../auth/AuthContext';
 import type { PaymentMethod, Transaction } from '../api/types';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr, UNIT_LABEL } from '../format';
-import { computeServiceCostPreview, feePctForPreview } from '../calcPreview';
+import { computeServiceCostPreview, feePctForPreview, salaFeePreview } from '../calcPreview';
+
+// Categories the app creates and manages by itself (sócio flows, machine
+// fees, package machinery...). Picking one by hand only creates confusion —
+// they stay out of the dropdown, except when editing an old entry that
+// already uses one.
+const INTERNAL_CATEGORIES = new Set([
+  'Aporte de sócio',
+  'Pagamento a sócio',
+  'Pacote pré-pago',
+  'Sessão de pacote',
+  'Taxas de maquininha',
+  'Uso de sala',
+  'Contas a pagar',
+  'Contas a receber',
+]);
 
 type Mode = 'despesa' | 'receita' | 'socio';
 
@@ -59,13 +74,15 @@ function TransactionForm({
   const [sales, setSales] = useState<SaleRow[]>(editingTx?.sales.map((sl) => ({ id: nextRowId(), productId: sl.productId, qty: String(sl.qty) })) || []);
   const [distanciaKm, setDistanciaKm] = useState(editingTx?.distanciaKm ? String(editingTx.distanciaKm) : '');
   const [payment, setPayment] = useState(editingTx?.payment || 'pix');
+  const [parcelas, setParcelas] = useState(editingTx?.parcelas || 1);
   const [capital, setCapital] = useState<'aporte' | 'pagamento'>(editingTx?.capital || 'aporte');
   const [capitalKind, setCapitalKind] = useState<'capital' | 'emprestimo'>(editingTx?.capitalKind || 'capital');
   const [socio, setSocio] = useState(editingTx?.socio || '');
   const [error, setError] = useState<string | null>(null);
 
-  const despesaCats = categories.filter((c) => c.type === 'despesa');
-  const receitaCats = categories.filter((c) => c.type === 'receita');
+  const pickable = (c: { id: string; name: string }) => !INTERNAL_CATEGORIES.has(c.name) || c.id === categoryId;
+  const despesaCats = categories.filter((c) => c.type === 'despesa' && pickable(c));
+  const receitaCats = categories.filter((c) => c.type === 'receita' && pickable(c));
   const catOptions = mode === 'receita' ? receitaCats : despesaCats;
 
   // Keeps categoryId valid whenever categories finish loading or the mode
@@ -164,9 +181,11 @@ function TransactionForm({
     () => computeServiceCostPreview(items.map((it) => ({ kind: it.kind, refId: it.refId, qty: it.qty })), products, equipment, settings) + numOr0(distanciaKm) * numOr0(settings?.costPerKm),
     [items, products, equipment, settings, distanciaKm]
   );
-  const feePct = feePctForPreview(payment, settings);
+  const feePct = feePctForPreview(payment, settings, payment === 'credito' ? parcelas : undefined);
   const feeVal = (numOr0(amount) * feePct) / 100;
   const salesTotalNow = salesTotal(sales);
+  const salaOn = settings && settings.salaMode !== 'off';
+  const salaVal = salaOn && serviceId ? salaFeePreview(numOr0(amount), settings) : 0;
 
   async function onSave() {
     setError(null);
@@ -202,6 +221,7 @@ function TransactionForm({
           sales: mode === 'receita' ? sales.filter((sl) => sl.productId && numOr0(sl.qty) > 0).map((sl) => ({ productId: sl.productId, qty: numOr0(sl.qty) })) : [],
           distanciaKm: mode === 'receita' ? numOr0(distanciaKm) : 0,
           payment: mode === 'receita' ? payment : null,
+          parcelas: mode === 'receita' && payment === 'credito' ? parcelas : null,
         });
       }
       onClose();
@@ -285,6 +305,16 @@ function TransactionForm({
                   </option>
                 ))}
               </select>
+              {payment === 'credito' && (
+                <select className="input" style={{ marginTop: 6 }} value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))}>
+                  <option value={1}>1x — à vista (ou parcelado com juros por conta do cliente)</option>
+                  {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+                    <option key={n} value={n}>
+                      {n}x — taxa sua
+                    </option>
+                  ))}
+                </select>
+              )}
               <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
                 {feePct <= 0 ? 'Sem taxa — entra 100% no caixa.' : `Taxa de ${feePct}%${feeVal > 0 ? ` = ${fmtBRL(feeVal)} lançados como despesa` : ''}`}
               </span>
@@ -366,6 +396,19 @@ function TransactionForm({
             Valor
             <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
+
+          {mode === 'receita' && salaOn && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
+              {serviceId ? (
+                <>
+                  <span style={{ color: 'var(--text-muted)' }}>Uso da sala — soma na conta a pagar do mês</span>
+                  <span style={{ fontWeight: 600, flex: 'none' }}>{fmtBRL(salaVal)}</span>
+                </>
+              ) : (
+                <span style={{ color: 'var(--text-muted)' }}>Sem serviço selecionado, este lançamento não conta uso de sala.</span>
+              )}
+            </div>
+          )}
 
           {mode === 'receita' && (
             <div>

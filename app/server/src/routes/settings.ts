@@ -17,6 +17,21 @@ const bodySchema = z.object({
   taxaCredito: z.number().min(0).max(100).optional(),
   taxaDebito: z.number().min(0).max(100).optional(),
   taxaPix: z.number().min(0).max(100).optional(),
+  // JSON map of credit fee % per installment count. Reject anything that
+  // isn't a flat object of sane numbers so a typo can't corrupt fee math.
+  taxaCreditoParcelas: z
+    .string()
+    .max(500)
+    .refine((s) => {
+      try {
+        const o = JSON.parse(s);
+        if (typeof o !== 'object' || o === null || Array.isArray(o)) return false;
+        return Object.entries(o).every(([k, v]) => /^\d{1,2}$/.test(k) && typeof v === 'number' && v >= 0 && v <= 100);
+      } catch {
+        return false;
+      }
+    }, 'Tabela de parcelas inválida')
+    .optional(),
   emailDigestEnabled: z.boolean().optional(),
   emailBackupEnabled: z.boolean().optional(),
   receiptDoc: z.string().max(60).optional(),

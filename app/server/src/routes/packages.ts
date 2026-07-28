@@ -28,6 +28,8 @@ const createSchema = z.object({
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']),
   mode: z.enum(['avista', 'prazo']),
   parcelas: z.number().int().gt(0).optional(),
+  /** Credit-card installments for an à-vista sale (machine fee per count). */
+  parcelasCartao: z.number().int().min(1).max(24).optional(),
   primeiroVenc: z.string().optional(),
 });
 
@@ -75,7 +77,8 @@ router.post('/', async (req: AuthedRequest, res) => {
   }
 
   const settings = (await prisma.settings.findUnique({ where: { businessId: req.businessId } }))!;
-  const feePct = feePctFor(d.payment, settings);
+  const parcelasCartao = d.payment === 'credito' ? d.parcelasCartao || 1 : null;
+  const feePct = feePctFor(d.payment, settings, parcelasCartao);
   const fee = round2((d.amount * feePct) / 100);
 
   const result = await prisma.$transaction(async (tx) => {
@@ -89,6 +92,7 @@ router.post('/', async (req: AuthedRequest, res) => {
         categoryId: cat.id,
         clientId: d.clientId,
         payment: d.payment,
+        parcelas: parcelasCartao,
         date: todayStr(),
         cashOnly: true, // money's in, but the sessions aren't delivered yet — see use-session
         note: `Pacote ${d.sessions}x${sv ? ' ' + sv.name : ''}`,
