@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
-import { feePctFor, computeServiceCost, packageSessionAmount } from '../calc.js';
+import { feePctFor, computeServiceCost, packageSessionAmount, salaFeeAmount } from '../calc.js';
 import { assertOwned } from '../ownership.js';
 import { todayStr, addMonthsToDate, round2 } from '../util.js';
 
@@ -162,6 +162,17 @@ router.post('/:id/use-session', async (req: AuthedRequest, res) => {
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
       },
     });
+    // A package session still happens inside the rented room, so it owes the
+    // room fee like any atendimento — % mode charges over this session's
+    // share of the package price.
+    const salaAmount = round2(salaFeeAmount(recognizedAmount, settings!));
+    if (salaAmount > 0) {
+      let scat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Uso de sala' } });
+      if (!scat) scat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Uso de sala', type: 'despesa' } });
+      await tx.transaction.create({
+        data: { businessId: req.businessId!, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: todayStr(), feeOf: t.id, note: 'Uso da sala' },
+      });
+    }
     const updated = await tx.package.update({ where: { id: pkg.id }, data: { used: pkg.used + 1 } });
     return { transaction: t, package: updated };
   });

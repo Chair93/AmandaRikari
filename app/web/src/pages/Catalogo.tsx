@@ -1,17 +1,28 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useDeleteService, useDuplicateService, useServices } from '../api/hooks';
+import { useDeleteService, useDuplicateService, useServices, useSettings } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, moneyColor, numOr0 } from '../format';
 import ServiceModal from '../components/ServiceModal';
-import type { Service } from '../api/types';
+import type { Service, Settings } from '../api/types';
+
+/** What the rented room takes from one atendimento at this price — zero when
+ *  no room is configured. Mirrors salaFeeAmount on the server. */
+function salaCost(price: number, s: Settings | undefined): number {
+  if (!s) return 0;
+  if (s.salaMode === 'fixo') return s.salaFixo || 0;
+  if (s.salaMode === 'pct') return (price * (s.salaPct || 0)) / 100;
+  return 0;
+}
 
 function ServiceRow({ sv }: { sv: Service }) {
   const { isOwner } = useAuth();
   const del = useDeleteService();
   const duplicate = useDuplicateService();
+  const { data: settings } = useSettings();
   const [editing, setEditing] = useState(false);
-  const margin = sv.price - sv.cost;
+  const sala = salaCost(sv.price, settings);
+  const margin = sv.price - sv.cost - sala;
   const marginPct = sv.price > 0 ? (margin / sv.price) * 100 : 0;
   return (
     <div className="card row-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', rowGap: 12 }}>
@@ -29,6 +40,12 @@ function ServiceRow({ sv }: { sv: Service }) {
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Custo variável</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(sv.cost)}</div>
         </div>
+        {sala > 0 && (
+          <div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Sala</div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(sala)}</div>
+          </div>
+        )}
         <div>
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>Preço sugerido</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtBRL(sv.price)}</div>
@@ -60,6 +77,7 @@ function ServiceRow({ sv }: { sv: Service }) {
 
 function PriceSimulator() {
   const { data: services = [] } = useServices();
+  const { data: settings } = useSettings();
   const [selectedId, setSelectedId] = useState('');
   const [custo, setCusto] = useState('');
   const [margem, setMargem] = useState('70');
@@ -72,7 +90,14 @@ function PriceSimulator() {
   const c = selected ? selected.cost : numOr0(custo);
   const p = selected ? selected.price : numOr0(preco);
   const m = Math.min(95, numOr0(margem));
-  const sugerido = m < 95 ? c / (1 - m / 100) : c;
+  // The rented room eats into every price. Fixed rent adds to the cost;
+  // percentage rent shrinks the share of the price that's actually yours,
+  // so it comes out of the denominator: p = (c + fixo) / (1 - m% - sala%).
+  const salaFixo = settings?.salaMode === 'fixo' ? settings.salaFixo || 0 : 0;
+  const salaPctFrac = settings?.salaMode === 'pct' ? (settings.salaPct || 0) / 100 : 0;
+  const denom = 1 - m / 100 - salaPctFrac;
+  const sugerido = denom > 0.05 ? (c + salaFixo) / denom : c + salaFixo;
+  const sobra = p - c - salaCost(p, settings);
 
   return (
     <div style={{ background: 'linear-gradient(135deg, var(--surface-2), var(--surface))', border: '1px solid var(--border-strong)', borderRadius: 16, padding: '18px 20px' }}>
@@ -81,6 +106,7 @@ function PriceSimulator() {
       </div>
       <div className="section-hint" style={{ marginBottom: 14 }}>
         Quanto cobrar para sobrar a margem que você quer — e quanto sobra no preço que você já cobra.
+        {settings?.salaMode !== 'off' && settings ? ' O custo da sala já está descontado.' : ''}
       </div>
 
       {services.length > 0 && (
@@ -148,8 +174,8 @@ function PriceSimulator() {
         </div>
         <div style={{ flex: 1, minWidth: 180, background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600 }}>No seu preço atual, sobra</div>
-          <div className="serif" style={{ fontSize: 26, fontWeight: 600, color: p > 0 ? moneyColor(p - c) : 'var(--text)' }}>
-            {p > 0 ? `${fmtBRL(p - c)} (${Math.round(((p - c) / p) * 100)}%)` : '—'}
+          <div className="serif" style={{ fontSize: 26, fontWeight: 600, color: p > 0 ? moneyColor(sobra) : 'var(--text)' }}>
+            {p > 0 ? `${fmtBRL(sobra)} (${Math.round((sobra / p) * 100)}%)` : '—'}
           </div>
         </div>
       </div>

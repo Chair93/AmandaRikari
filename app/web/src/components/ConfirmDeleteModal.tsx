@@ -37,7 +37,7 @@ export default function ConfirmDeleteModal({
       removes.push(`${impact.compras.count} ${impact.compras.count === 1 ? 'compra' : 'compras'} — ${fmtBRL(impact.compras.total)} de saída do caixa`);
     }
     if (impact.atendimentos.count > 0) {
-      changes.push(`${impact.atendimentos.count} ${impact.atendimentos.count === 1 ? 'atendimento usou' : 'atendimentos usaram'} este item — os atendimentos continuam (a cliente pagou), só somem da lista de itens`);
+      changes.push(`${impact.atendimentos.count} ${impact.atendimentos.count === 1 ? 'atendimento usou' : 'atendimentos usaram'} este item — os atendimentos continuam (o cliente pagou), só somem da lista de itens`);
     }
     if (impact.servicos.count > 0) {
       changes.push(`sai da ficha técnica de ${impact.servicos.count} ${impact.servicos.count === 1 ? 'serviço' : 'serviços'}: ${impact.servicos.names.join(', ')}`);

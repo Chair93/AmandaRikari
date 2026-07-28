@@ -11,7 +11,7 @@ import type { ClienteRow } from '../api/types';
 function statusFor(row: ClienteRow) {
   if (row.visitas === 0) return { label: 'Sem atendimento', bg: 'var(--surface-2)', color: 'var(--idle-color)' };
   const d = row.diasDesde || 0;
-  if (d > 60) return { label: `Sumida há ${d} dias`, bg: 'var(--expense-soft)', color: 'var(--expense-text)' };
+  if (d > 60) return { label: `Sumiu há ${d} dias`, bg: 'var(--expense-soft)', color: 'var(--expense-text)' };
   if (d > 45) return { label: 'Hora de chamar', bg: 'var(--warning-soft)', color: 'var(--warning-text)' };
   return { label: `Em dia · ${d} dias`, bg: 'var(--income-soft)', color: 'var(--income-text)' };
 }

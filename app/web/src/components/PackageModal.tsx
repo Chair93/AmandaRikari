@@ -93,7 +93,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         </label>
       </div>
       <div className="field">
-        Como ela vai pagar
+        Como o cliente vai pagar
         <div className="tab-row">
           <button className={'tab' + (mode === 'avista' ? ' active-accent' : '')} onClick={() => setMode('avista')}>
             À vista

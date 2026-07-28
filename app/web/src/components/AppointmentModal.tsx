@@ -30,7 +30,7 @@ export default function AppointmentModal({
 
   async function onSave() {
     if (!clientId || !date || !time) {
-      setError('Escolha a cliente, a data e o horário.');
+      setError('Escolha o cliente, a data e o horário.');
       return;
     }
     try {

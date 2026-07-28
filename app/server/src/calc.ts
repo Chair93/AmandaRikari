@@ -55,6 +55,11 @@ export type SettingsRow = {
   taxaDebito: number;
   taxaPix: number;
   metaMensal: number;
+  // Rented-room cost per atendimento. Optional so pre-existing fixtures and
+  // callers that never touch sala logic keep compiling.
+  salaMode?: string; // 'off' | 'fixo' | 'pct'
+  salaFixo?: number;
+  salaPct?: number;
 };
 
 function isMaquina(eq: EquipmentRow): boolean {
@@ -86,6 +91,15 @@ export function computeServiceCost(
     const usos = Math.max(1, numOr0(it.qty));
     return sum + porUso * usos;
   }, 0);
+}
+
+/** What the room owner charges for one atendimento: a flat value or a cut of
+ *  the amount charged, depending on how the rental deal was struck. 'off'
+ *  (the default) means no rented room — everything stays as it was. */
+export function salaFeeAmount(amount: number, settings: SettingsRow): number {
+  if (settings.salaMode === 'fixo') return numOr0(settings.salaFixo);
+  if (settings.salaMode === 'pct') return (numOr0(amount) * numOr0(settings.salaPct)) / 100;
+  return 0;
 }
 
 export function feePctFor(method: string | null | undefined, settings: SettingsRow): number {

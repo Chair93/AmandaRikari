@@ -88,7 +88,7 @@ export default function ReceiptModal({
           Dica: preencha CPF/CNPJ, endereço e cidade em Ajustes &gt; Dados do recibo para o recibo sair completo.
         </div>
       )}
-      {!numero && <div style={{ fontSize: 11.5, color: 'var(--expense-text)', lineHeight: 1.45 }}>Essa cliente não tem telefone cadastrado — o WhatsApp vai abrir sem destinatário.</div>}
+      {!numero && <div style={{ fontSize: 11.5, color: 'var(--expense-text)', lineHeight: 1.45 }}>Esse cliente não tem telefone cadastrado — o WhatsApp vai abrir sem destinatário.</div>}
       <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button className="btn-secondary" onClick={onClose}>
           Fechar

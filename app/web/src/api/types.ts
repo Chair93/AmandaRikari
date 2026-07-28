@@ -155,6 +155,10 @@ export interface Settings {
   receiptPhone: string;
   receiptAddress: string;
   receiptCity: string;
+  /** Rented treatment room: 'fixo' = salaFixo R$ per atendimento; 'pct' = salaPct% of its value. */
+  salaMode: 'off' | 'fixo' | 'pct';
+  salaFixo: number;
+  salaPct: number;
   agendaStartHour: number;
   agendaEndHour: number;
   agendaSlotMin: number;

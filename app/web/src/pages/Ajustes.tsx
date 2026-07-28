@@ -419,7 +419,7 @@ function ReceiptCard({ settings }: { settings: Settings }) {
       <div>
         <div style={{ fontSize: 14, fontWeight: 600 }}>Dados do recibo</div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1, maxWidth: 480, lineHeight: 1.5 }}>
-          Aparecem no recibo enviado pra cliente — e já deixam tudo pronto pra quando você for emitir nota fiscal.
+          Aparecem no recibo enviado pro cliente — e já deixam tudo pronto pra quando você for emitir nota fiscal.
         </div>
       </div>
       <fieldset disabled={!isOwner} style={{ border: 'none', margin: 0, padding: 0, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -461,6 +461,8 @@ function SettingsCard({ settings }: { settings: Settings }) {
     agendaStartHour: String(settings.agendaStartHour ?? 9),
     agendaEndHour: String(settings.agendaEndHour ?? 19),
     agendaSlotMin: String(settings.agendaSlotMin ?? 30),
+    salaFixo: settings.salaFixo ? String(settings.salaFixo).replace('.', ',') : '',
+    salaPct: settings.salaPct ? String(settings.salaPct).replace('.', ',') : '',
   });
 
   function commit(key: keyof typeof draft) {
@@ -515,6 +517,25 @@ function SettingsCard({ settings }: { settings: Settings }) {
         Meta de faturamento mensal (R$)
         <input className="input" inputMode="decimal" placeholder="0,00" {...bind('metaMensal')} />
       </label>
+      <div className="field">
+        Sala / espaço alugado
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className={'pill sm' + (settings.salaMode === 'off' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'off' })}>
+            Não uso
+          </button>
+          <button className={'pill sm' + (settings.salaMode === 'fixo' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'fixo' })}>
+            R$ por atendimento
+          </button>
+          <button className={'pill sm' + (settings.salaMode === 'pct' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'pct' })}>
+            % do atendimento
+          </button>
+          {settings.salaMode === 'fixo' && <input className="input" style={{ width: 100 }} inputMode="decimal" placeholder="0,00" {...bind('salaFixo')} />}
+          {settings.salaMode === 'pct' && <input className="input" style={{ width: 70 }} inputMode="decimal" placeholder="Ex: 20" {...bind('salaPct')} />}
+        </div>
+        <span style={{ fontWeight: 500, fontSize: 11 }}>
+          Se você atende num espaço de outra pessoa, o custo vira despesa automática a cada atendimento — igual à taxa da maquininha. Vale também pra sessões de pacote.
+        </span>
+      </div>
       <div className="field">
         Horário de atendimento (Agenda)
         <div style={{ display: 'flex', gap: 8 }}>

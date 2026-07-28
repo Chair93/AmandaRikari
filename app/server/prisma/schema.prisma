@@ -287,6 +287,13 @@ model Settings {
   receiptPhone       String  @default("")
   receiptAddress     String  @default("")
   receiptCity        String  @default("")
+  /// Rented treatment room: what the space owner charges per atendimento.
+  /// 'off' = no rented room; 'fixo' = salaFixo reais each; 'pct' = salaPct%
+  /// of the atendimento's value. Books an automatic despesa like the
+  /// card-machine fee does.
+  salaMode           String  @default("off") // 'off' | 'fixo' | 'pct'
+  salaFixo           Float   @default(0)
+  salaPct            Float   @default(0)
   agendaStartHour    Int     @default(9)
   agendaEndHour      Int     @default(19)
   agendaSlotMin      Int     @default(30)

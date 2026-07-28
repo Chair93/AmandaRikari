@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
-import { computeServiceCost, feePctFor } from '../calc.js';
+import { computeServiceCost, feePctFor, salaFeeAmount } from '../calc.js';
 import { assertOwned } from '../ownership.js';
 import { round2, todayStr } from '../util.js';
 
@@ -132,6 +132,9 @@ router.post('/', async (req: AuthedRequest, res) => {
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
   const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
+  // Room rental is charged per atendimento — a receita tied to a service.
+  // Plain product sales or loose receitas don't use the rented room.
+  const salaAmount = d.type === 'receita' && d.serviceId ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
 
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.transaction.create({
@@ -161,6 +164,12 @@ router.post('/', async (req: AuthedRequest, res) => {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
         data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: created.id, note: `Taxa ${PAY_LABEL[payMethod!]}` },
+      });
+    }
+    if (salaAmount > 0) {
+      const scat = await findOrCreateCategory(businessId, 'Uso de sala', 'despesa');
+      await tx.transaction.create({
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, note: 'Uso da sala' },
       });
     }
     return created;
@@ -211,6 +220,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
   const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
+  const salaAmount = d.type === 'receita' && d.serviceId ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
 
   const result = await prisma.$transaction(async (tx) => {
     // restock according to the delta between previous and next sales
@@ -244,12 +254,18 @@ router.put('/:id', async (req: AuthedRequest, res) => {
       include: TX_INCLUDE,
     });
 
-    // Replace any machine-fee expense tied to this transaction.
+    // Replace the machine-fee and room-fee expenses tied to this transaction.
     await tx.transaction.deleteMany({ where: { feeOf: existing.id } });
     if (feeAmount > 0) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
         data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: existing.id, note: `Taxa ${PAY_LABEL[payMethod!]}` },
+      });
+    }
+    if (salaAmount > 0) {
+      const scat = await findOrCreateCategory(businessId, 'Uso de sala', 'despesa');
+      await tx.transaction.create({
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: existing.id, note: 'Uso da sala' },
       });
     }
     return updated;

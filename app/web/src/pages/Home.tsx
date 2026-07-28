@@ -84,7 +84,7 @@ const ACTIONS: { key: ActionKey; title: string; desc: string; tint: string; prim
   },
   {
     key: 'client',
-    title: 'Nova cliente',
+    title: 'Novo cliente',
     desc: 'Telefone, aniversário e histórico',
     tint: '#2f9e9e',
     icon: (

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeServiceCost,
   feePctFor,
+  salaFeeAmount,
   equipmentUsageCounts,
   equipmentDepreciation,
   isOpExpense,
@@ -110,6 +111,21 @@ describe('feePctFor', () => {
     expect(feePctFor('pix', settings)).toBe(1);
     expect(feePctFor('dinheiro', settings)).toBe(0);
     expect(feePctFor(null, settings)).toBe(0);
+  });
+});
+
+describe('salaFeeAmount', () => {
+  it('is zero when no rented room is configured (default off)', () => {
+    expect(salaFeeAmount(200, settings)).toBe(0);
+    expect(salaFeeAmount(200, { ...settings, salaMode: 'off', salaFixo: 50, salaPct: 10 })).toBe(0);
+  });
+  it('charges the flat value per atendimento in fixo mode', () => {
+    expect(salaFeeAmount(200, { ...settings, salaMode: 'fixo', salaFixo: 35 })).toBe(35);
+    expect(salaFeeAmount(80, { ...settings, salaMode: 'fixo', salaFixo: 35 })).toBe(35);
+  });
+  it('charges a percentage of the amount in pct mode', () => {
+    expect(salaFeeAmount(200, { ...settings, salaMode: 'pct', salaPct: 15 })).toBe(30);
+    expect(salaFeeAmount(0, { ...settings, salaMode: 'pct', salaPct: 15 })).toBe(0);
   });
 });
 
