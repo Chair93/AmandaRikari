@@ -35,6 +35,12 @@ function ExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
   return <span className="badge">validade {fmtDateBR(expiresAt)}</span>;
 }
 
+/** Stock is fractional now (atendimentos take their grams off the pot), so
+ *  "0.7999999" needs to read as "0,8". */
+function fmtUn(n: number): string {
+  return String(Math.round(n * 100) / 100).replace('.', ',');
+}
+
 function EstoqueRow({ p }: { p: Product }) {
   const { isOwner } = useAuth();
   const entrada = useProductEntrada();
@@ -61,7 +67,12 @@ function EstoqueRow({ p }: { p: Product }) {
       <div className="row-stats">
         {p.stock <= p.lowStockAt && <span className="badge warning">estoque baixo</span>}
         <ExpiryBadge expiresAt={p.expiresAt} />
-        <span style={{ fontSize: 14, fontWeight: 700 }}>{p.stock} un</span>
+        <span style={{ fontSize: 14, fontWeight: 700 }} title={p.unit !== 'unidade' ? `≈ ${Math.round(p.stock * p.packageQty)} ${UNIT_LABEL[p.unit] || p.unit} no total` : undefined}>
+          {fmtUn(p.stock)} un
+          {p.unit !== 'unidade' && !Number.isInteger(Math.round(p.stock * 100) / 100) && (
+            <span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)' }}> ≈{Math.round(p.stock * p.packageQty)} {UNIT_LABEL[p.unit] || p.unit}</span>
+          )}
+        </span>
         <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{fmtBRL(valor)}</span>
         {p.salePrice > 0 && (
           <span style={{ fontSize: 12.5, fontWeight: 600, color: moneyColor(margemUnit) }}>
@@ -126,9 +137,9 @@ function EstoqueRow({ p }: { p: Product }) {
       {prompt === 'contagem' && (
         <PromptModal
           title={`Ajuste de inventário — ${p.name}`}
-          description={`O app diz ${p.stock} un. Conte na prateleira e digite o número real: a diferença é lançada no resultado como perda ou ganho de inventário (${fmtBRL(custo)} por unidade), sem mexer no caixa.`}
+          description={`O app diz ${fmtUn(p.stock)} un${p.unit !== 'unidade' ? ` (≈ ${Math.round(p.stock * p.packageQty)} ${UNIT_LABEL[p.unit] || p.unit})` : ''}. Conte na prateleira e digite o número real — pode usar fração, ex: 0,5 = meio pacote. A diferença é lançada no resultado como perda ou ganho de inventário (${fmtBRL(custo)} por unidade), sem mexer no caixa.`}
           fields={[
-            { key: 'real', label: 'Contagem real (un)', defaultValue: String(p.stock).replace('.', ','), kind: 'count' },
+            { key: 'real', label: 'Contagem real (un)', defaultValue: fmtUn(p.stock), kind: 'count' },
             { key: 'note', label: 'Motivo (opcional)', kind: 'text', required: false },
           ]}
           confirmLabel="Ajustar"
@@ -143,9 +154,9 @@ function EstoqueRow({ p }: { p: Product }) {
       {prompt === 'venda' && (
         <PromptModal
           title={`Vender — ${p.name}`}
-          description={`Em estoque: ${p.stock} un · custo médio ${fmtBRL(custo)}`}
+          description={`Em estoque: ${fmtUn(p.stock)} un · custo médio ${fmtBRL(custo)}`}
           fields={[
-            { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty', hint: `Máximo ${p.stock}` },
+            { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty', hint: `Máximo ${fmtUn(p.stock)}` },
             { key: 'unitPrice', label: 'Preço de venda por unidade (R$)', defaultValue: String(p.salePrice || p.packageCost).replace('.', ','), kind: 'money' },
           ]}
           confirmLabel="Registrar venda"

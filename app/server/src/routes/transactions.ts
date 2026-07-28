@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { computeServiceCost, feePctFor, salaFeeAmount } from '../calc.js';
 import { assertOwned } from '../ownership.js';
+import { applyProductConsumption } from '../consumption.js';
 import { adjustSalaBill } from '../sala.js';
 import { round2, todayStr } from '../util.js';
 
@@ -154,6 +155,7 @@ router.post('/', async (req: AuthedRequest, res) => {
         note: d.note || null,
         payment: payMethod,
         parcelas,
+        consumoBaixado: true,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
         sales: { create: salesData },
       },
@@ -164,6 +166,14 @@ router.post('/', async (req: AuthedRequest, res) => {
         await tx.product.update({ where: { id: sl.productId }, data: { stock: { decrement: sl.qty } } });
       }
     }
+    // Ficha-técnica usage takes its fraction of each pot/package off the
+    // shelf, so Estoque reflects what's physically left.
+    await applyProductConsumption(
+      tx,
+      items.filter((it) => it.kind === 'product').map((it) => ({ productId: it.refId, qty: it.qty })),
+      ctx.products,
+      'consume'
+    );
     if (feeAmount > 0) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
@@ -189,7 +199,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const businessId = req.businessId!;
-  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId }, include: { sales: true } });
+  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId }, include: { sales: true, items: true } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const d = parsed.data;
 
@@ -240,6 +250,23 @@ router.put('/:id', async (req: AuthedRequest, res) => {
       if (qtyDelta !== 0) await tx.product.update({ where: { id: productId }, data: { stock: { increment: qtyDelta } } });
     }
 
+    // Fractional consumption: give back what the old version took (only if it
+    // ever took it — pre-feature entries never consumed), then take the new.
+    if (existing.consumoBaixado) {
+      await applyProductConsumption(
+        tx,
+        existing.items.filter((it) => it.kind === 'product' && it.productId).map((it) => ({ productId: it.productId!, qty: it.qty })),
+        ctx.products,
+        'restore'
+      );
+    }
+    await applyProductConsumption(
+      tx,
+      items.filter((it) => it.kind === 'product').map((it) => ({ productId: it.refId, qty: it.qty })),
+      ctx.products,
+      'consume'
+    );
+
     await tx.transactionItem.deleteMany({ where: { transactionId: existing.id } });
     await tx.transactionSale.deleteMany({ where: { transactionId: existing.id } });
     const updated = await tx.transaction.update({
@@ -256,6 +283,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
         note: d.note || null,
         payment: payMethod,
         parcelas,
+        consumoBaixado: true,
         capital: null,
         socio: null,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
@@ -289,11 +317,20 @@ router.put('/:id', async (req: AuthedRequest, res) => {
 });
 
 router.delete('/:id', async (req: AuthedRequest, res) => {
-  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { sales: true } });
+  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { sales: true, items: true } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   await prisma.$transaction(async (tx) => {
     for (const sl of existing.sales) {
       await tx.product.update({ where: { id: sl.productId }, data: { stock: { increment: sl.qty } } });
+    }
+    if (existing.consumoBaixado) {
+      const prods = await tx.product.findMany({ where: { businessId: req.businessId! }, select: { id: true, packageQty: true } });
+      await applyProductConsumption(
+        tx,
+        existing.items.filter((it) => it.kind === 'product' && it.productId).map((it) => ({ productId: it.productId!, qty: it.qty })),
+        prods,
+        'restore'
+      );
     }
     // Room fee going away → its share leaves the month's bill too (negative
     // delta never creates a bill, so the owner name doesn't matter here).

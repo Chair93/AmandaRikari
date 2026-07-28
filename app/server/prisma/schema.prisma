@@ -220,6 +220,12 @@ model Transaction {
   equipmentId String?
   equipment   Equipment? @relation(fields: [equipmentId], references: [id])
 
+  // True once this atendimento's ficha-técnica product usage was subtracted
+  // from stock (fractions of a package). Entries created before fractional
+  // consumption existed stay false so editing/deleting them doesn't "return"
+  // stock that was never taken.
+  consumoBaixado Boolean @default(false)
+
   // Deferred revenue for prepaid packages: the sale (or installment payoff)
   // moves cash but hasn't been earned yet (cashOnly); using up a session
   // earns its proportional share of revenue without moving new cash
