@@ -157,7 +157,14 @@ export default function Dashboard() {
                       <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{s.name}</span>
                       <span style={{ fontSize: 12, color: 'var(--income-text)', width: 130, textAlign: 'right' }}>aportou {mask(fmtBRL(s.aportado))}</span>
                       <span style={{ fontSize: 12, color: 'var(--expense-text)', width: 130, textAlign: 'right' }}>recebeu {mask(fmtBRL(s.pago))}</span>
-                      <span style={{ fontSize: 12.5, fontWeight: 600, width: 150, textAlign: 'right' }}>a devolver {mask(fmtBRL(s.saldo))}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, minWidth: 150, textAlign: 'right' }}>
+                        {[
+                          s.emprestimo > 0.005 ? `a devolver ${mask(fmtBRL(s.emprestimo))}` : '',
+                          s.capital > 0.005 ? `capital ${mask(fmtBRL(s.capital))}` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || 'quitado'}
+                      </span>
                     </div>
                   ))}
                 </div>

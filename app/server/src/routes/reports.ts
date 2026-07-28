@@ -129,14 +129,26 @@ router.get('/dashboard', async (req: AuthedRequest, res) => {
     .slice(0, 5)
     .map((t) => serializeTx(t, data));
 
-  const sociosMap: Record<string, { aportado: number; pago: number }> = {};
+  // Split by capitalKind: an aporte marked "vira capital" is investment, not
+  // debt — only the empréstimo balance is money the business owes back.
+  const sociosMap: Record<string, { aportado: number; pago: number; capital: number; emprestimo: number }> = {};
   data.transactions.forEach((t) => {
     if (!t.capital || !t.socio) return;
-    if (!sociosMap[t.socio]) sociosMap[t.socio] = { aportado: 0, pago: 0 };
+    if (!sociosMap[t.socio]) sociosMap[t.socio] = { aportado: 0, pago: 0, capital: 0, emprestimo: 0 };
+    const kind = (t.capitalKind || 'capital') === 'emprestimo' ? 'emprestimo' : 'capital';
+    const sign = t.capital === 'aporte' ? 1 : -1;
+    sociosMap[t.socio][kind] += sign * t.amount;
     if (t.capital === 'aporte') sociosMap[t.socio].aportado += t.amount;
     else sociosMap[t.socio].pago += t.amount;
   });
-  const sociosList = Object.entries(sociosMap).map(([name, v]) => ({ name, aportado: v.aportado, pago: v.pago, saldo: v.aportado - v.pago }));
+  const sociosList = Object.entries(sociosMap).map(([name, v]) => ({
+    name,
+    aportado: v.aportado,
+    pago: v.pago,
+    saldo: v.aportado - v.pago,
+    capital: v.capital,
+    emprestimo: v.emprestimo,
+  }));
 
   res.json({
     monthKey,

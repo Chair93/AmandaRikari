@@ -260,7 +260,8 @@ export interface DashboardData {
   categoryBreakdown: { id: string; name: string; amount: number }[];
   recentTx: TxSummary[];
   alerts: Alert[];
-  sociosList: { name: string; aportado: number; pago: number; saldo: number }[];
+  /** capital = virou patrimônio (não devolve); emprestimo = dívida com o sócio. */
+  sociosList: { name: string; aportado: number; pago: number; saldo: number; capital: number; emprestimo: number }[];
 }
 
 export interface TxSummary {
