@@ -114,6 +114,9 @@ model ClientPhoto {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   clientId   String
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /// 'anamnese' | 'antes' | 'depois' | 'outra' — fixed set on purpose, so
+  /// the gallery filters stay meaningful instead of drowning in free text.
+  tipo       String   @default("anamnese")
   mime       String
   size       Int
   createdAt  DateTime @default(now())

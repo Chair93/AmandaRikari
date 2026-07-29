@@ -13,7 +13,10 @@ const MAX_BYTES = 5 * 1024 * 1024; // post-compression photos are ~300KB; 5MB is
 
 /** Upload como JSON base64 (data URL). The web client compresses on-device
  *  before sending — which also strips EXIF/GPS from the original. */
-const uploadSchema = z.object({ data: z.string().min(50).max(8_000_000) });
+const uploadSchema = z.object({
+  data: z.string().min(50).max(8_000_000),
+  tipo: z.enum(['anamnese', 'antes', 'depois', 'outra']).optional(),
+});
 
 router.get('/client/:clientId', async (req: AuthedRequest, res) => {
   const client = await prisma.client.findFirst({ where: { id: req.params.clientId, businessId: req.businessId } });
@@ -35,7 +38,7 @@ router.post('/client/:clientId', json({ limit: '8mb' }), async (req: AuthedReque
   const buf = Buffer.from(m[2], 'base64');
   if (buf.length === 0 || buf.length > MAX_BYTES) return res.status(400).json({ error: 'Imagem muito grande (máx. 5MB).' });
 
-  const row = await prisma.clientPhoto.create({ data: { businessId: req.businessId!, clientId: client.id, mime, size: buf.length } });
+  const row = await prisma.clientPhoto.create({ data: { businessId: req.businessId!, clientId: client.id, tipo: parsed.data.tipo || 'anamnese', mime, size: buf.length } });
   try {
     savePhoto(req.businessId!, row.id, buf);
   } catch (e) {

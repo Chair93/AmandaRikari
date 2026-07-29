@@ -396,9 +396,11 @@ export function useDeleteAppointment() {
   return useMutation({ mutationFn: (id: string) => api.del(`/appointments/${id}`), onSuccess: invalidate });
 }
 // ---------- Client photos (anamnese) ----------
+export type PhotoTipo = 'anamnese' | 'antes' | 'depois' | 'outra';
 export interface ClientPhoto {
   id: string;
   clientId: string;
+  tipo: PhotoTipo;
   mime: string;
   size: number;
   createdAt: string;
@@ -409,7 +411,7 @@ export function useClientPhotos(clientId: string | null) {
 export function useUploadClientPhoto() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { clientId: string; data: string }) => api.post<ClientPhoto>(`/photos/client/${input.clientId}`, { data: input.data }),
+    mutationFn: (input: { clientId: string; data: string; tipo: PhotoTipo }) => api.post<ClientPhoto>(`/photos/client/${input.clientId}`, { data: input.data, tipo: input.tipo }),
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['clientPhotos', v.clientId] }),
   });
 }

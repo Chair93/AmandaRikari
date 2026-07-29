@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import Modal from './Modal';
-import { useClientDetail, useClientPhotos, useDeleteClientPhoto, useDeletePackage, useSettleBill, useUploadClientPhoto, useUsePackageSession } from '../api/hooks';
+import { useClientDetail, useClientPhotos, useDeleteClientPhoto, useDeletePackage, useSettleBill, useUploadClientPhoto, useUsePackageSession, type PhotoTipo } from '../api/hooks';
 import { compressImage } from '../imageCompress';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, fmtDateBR } from '../format';
@@ -178,16 +178,30 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   );
 }
 
-/** Anamnese e fotos — camera-first on the phone (capture opens the camera),
- *  compressed on-device before upload, served only to this logged-in
- *  business and stored encrypted on the server. */
+const TIPO_LABEL: Record<PhotoTipo, string> = { anamnese: 'Anamnese', antes: 'Antes', depois: 'Depois', outra: 'Outra' };
+const GALERIA_COMPACTA = 6;
+
+/** Anamnese e fotos — camera-first on the phone, compressed on-device,
+ *  stored encrypted on the server. Every photo carries a fixed tipo so the
+ *  gallery can filter; the newest anamnese is flagged "atual" and the rest
+ *  stay as history (health declarations are never overwritten). */
 function PhotosSection({ clientId }: { clientId: string }) {
   const { isOwner } = useAuth();
   const { data: photos = [] } = useClientPhotos(clientId);
   const upload = useUploadClientPhoto();
   const delPhoto = useDeleteClientPhoto();
   const fileRef = useRef<HTMLInputElement>(null);
+  const tipoRef = useRef<PhotoTipo>('anamnese');
+  const [choosing, setChoosing] = useState(false);
+  const [filtro, setFiltro] = useState<'todas' | 'anamnese' | 'ad'>('todas');
+  const [showAll, setShowAll] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  function pickTipo(t: PhotoTipo) {
+    tipoRef.current = t;
+    setChoosing(false);
+    fileRef.current?.click();
+  }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -196,60 +210,111 @@ function PhotosSection({ clientId }: { clientId: string }) {
     setErr(null);
     try {
       const data = await compressImage(file);
-      await upload.mutateAsync({ clientId, data });
+      await upload.mutateAsync({ clientId, data, tipo: tipoRef.current });
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Não consegui enviar a foto.');
     }
   }
 
+  // Rows come newest-first from the server, so the first anamnese is the
+  // current one.
+  const anamneseAtualId = photos.find((p) => p.tipo === 'anamnese')?.id;
+  const filtered = photos.filter((p) => (filtro === 'todas' ? true : filtro === 'anamnese' ? p.tipo === 'anamnese' : p.tipo === 'antes' || p.tipo === 'depois'));
+  const visiveis = showAll ? filtered : filtered.slice(0, GALERIA_COMPACTA);
+
   if (photos.length === 0 && !isOwner) return null;
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <div className="section-title" style={{ marginBottom: 0 }}>
           Anamnese e fotos
         </div>
         {isOwner && (
-          <button className="pill sm" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+          <button className="pill sm" onClick={() => setChoosing((c) => !c)} disabled={upload.isPending}>
             {upload.isPending ? 'Enviando…' : '📷 Adicionar foto'}
           </button>
         )}
       </div>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, marginBottom: 8 }}>
-        Guardadas criptografadas no servidor — só quem está logado vê.
+        Guardadas criptografadas no servidor — só quem está logado vê. Anamnese nova entra por cima; as antigas ficam de histórico.
       </div>
-      {err && <div className="auth-error">{err}</div>}
-      {photos.length > 0 ? (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {photos.map((p) => (
-            <div key={p.id} style={{ position: 'relative' }}>
-              <a href={`/api/photos/${p.id}/file`} target="_blank" rel="noopener noreferrer" title={`Aberta em tamanho real — ${fmtDateBR(p.createdAt.slice(0, 10))}`}>
-                <img
-                  src={`/api/photos/${p.id}/file`}
-                  alt={`Foto de ${fmtDateBR(p.createdAt.slice(0, 10))}`}
-                  style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)', display: 'block' }}
-                  loading="lazy"
-                />
-              </a>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textAlign: 'center', marginTop: 2 }}>{fmtDateBR(p.createdAt.slice(0, 10))}</div>
-              {isOwner && (
-                <button
-                  className="icon-btn"
-                  aria-label="Excluir foto"
-                  style={{ position: 'absolute', top: -6, right: -6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, width: 22, height: 22, lineHeight: 1 }}
-                  onClick={() => {
-                    if (window.confirm('Excluir esta foto? Não tem volta.')) delPhoto.mutate({ id: p.id, clientId });
-                  }}
-                >
-                  ×
-                </button>
-              )}
-            </div>
+      {choosing && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600 }}>O que é essa foto?</span>
+          {(Object.keys(TIPO_LABEL) as PhotoTipo[]).map((t) => (
+            <button key={t} className="pill sm" onClick={() => pickTipo(t)}>
+              {TIPO_LABEL[t]}
+            </button>
           ))}
         </div>
+      )}
+      {photos.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {(
+            [
+              ['todas', `Todas (${photos.length})`],
+              ['anamnese', `Anamnese (${photos.filter((p) => p.tipo === 'anamnese').length})`],
+              ['ad', `Antes/Depois (${photos.filter((p) => p.tipo === 'antes' || p.tipo === 'depois').length})`],
+            ] as const
+          ).map(([k, label]) => (
+            <button key={k} className={'pill sm' + (filtro === k ? ' active' : '')} onClick={() => setFiltro(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {err && <div className="auth-error">{err}</div>}
+      {filtered.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {visiveis.map((p) => (
+              <div key={p.id} style={{ position: 'relative' }}>
+                <a href={`/api/photos/${p.id}/file`} target="_blank" rel="noopener noreferrer" title={`${TIPO_LABEL[p.tipo]} — ${fmtDateBR(p.createdAt.slice(0, 10))}`}>
+                  <img
+                    src={`/api/photos/${p.id}/file`}
+                    alt={`${TIPO_LABEL[p.tipo]} de ${fmtDateBR(p.createdAt.slice(0, 10))}`}
+                    style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)', display: 'block' }}
+                    loading="lazy"
+                  />
+                </a>
+                <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textAlign: 'center', marginTop: 2 }}>
+                  {TIPO_LABEL[p.tipo]}
+                  {p.id === anamneseAtualId ? ' · atual' : ''} · {fmtDateBR(p.createdAt.slice(0, 10))}
+                </div>
+                {p.id === anamneseAtualId && (
+                  <span
+                    className="badge"
+                    style={{ position: 'absolute', top: 4, left: 4, background: 'var(--income-soft)', color: 'var(--income-text)', fontSize: 9, fontWeight: 700, padding: '2px 6px' }}
+                  >
+                    atual
+                  </span>
+                )}
+                {isOwner && (
+                  <button
+                    className="icon-btn"
+                    aria-label="Excluir foto"
+                    style={{ position: 'absolute', top: -6, right: -6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, width: 22, height: 22, lineHeight: 1 }}
+                    onClick={() => {
+                      if (window.confirm('Excluir esta foto? Não tem volta.')) delPhoto.mutate({ id: p.id, clientId });
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {filtered.length > GALERIA_COMPACTA && (
+            <button className="pill ghost sm" style={{ marginTop: 8 }} onClick={() => setShowAll((s) => !s)}>
+              {showAll ? 'Mostrar menos' : `Ver todas (${filtered.length})`}
+            </button>
+          )}
+        </>
       ) : (
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Nenhuma foto ainda — tire uma foto da ficha de anamnese no celular e guarde aqui.</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          {photos.length === 0 ? 'Nenhuma foto ainda — tire uma foto da ficha de anamnese no celular e guarde aqui.' : 'Nenhuma foto nesse filtro.'}
+        </div>
       )}
       {isOwner && <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPick} />}
     </div>
