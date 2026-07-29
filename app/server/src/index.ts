@@ -33,6 +33,7 @@ import reportsRoutes from './routes/reports.js';
 import backupRoutes from './routes/backup.js';
 import teamRoutes from './routes/team.js';
 import appointmentsRoutes from './routes/appointments.js';
+import photosRoutes from './routes/photos.js';
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -114,6 +115,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/photos', photosRoutes);
 
 // In production the built frontend (app/web/dist) is copied into ./public
 // alongside this compiled server, so one process serves the API and the SPA.

@@ -42,6 +42,7 @@ model Business {
   recurring    Recurring[]
   packages     Package[]
   appointments Appointment[]
+  clientPhotos ClientPhoto[]
   settings     Settings?
 }
 
@@ -98,7 +99,26 @@ model Client {
   bills        Bill[]
   packages     Package[]
   appointments Appointment[]
+  photos       ClientPhoto[]
 
+  @@index([businessId])
+}
+
+/// A photo attached to a client — anamnese forms, before/after shots. The
+/// actual image lives OUTSIDE the database as an AES-256-GCM-encrypted file
+/// on the volume (see photoStore.ts); this row is only the metadata. Health
+/// data gets encryption at rest even in a small clinic.
+model ClientPhoto {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  mime       String
+  size       Int
+  createdAt  DateTime @default(now())
+
+  @@index([clientId])
   @@index([businessId])
 }
 

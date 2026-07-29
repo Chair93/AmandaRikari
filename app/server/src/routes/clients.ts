@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
+import { deletePhotoFile } from '../photoStore.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -38,10 +39,14 @@ router.put('/:id', async (req: AuthedRequest, res) => {
 router.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.client.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
+  // Photo rows cascade with the client; the encrypted files on disk don't,
+  // so collect them first and remove after the delete commits.
+  const photos = await prisma.clientPhoto.findMany({ where: { clientId: existing.id }, select: { id: true } });
   await prisma.$transaction([
     prisma.transaction.updateMany({ where: { clientId: existing.id }, data: { clientId: null } }),
     prisma.client.delete({ where: { id: existing.id } }),
   ]);
+  for (const p of photos) deletePhotoFile(req.businessId!, p.id);
   res.status(204).end();
 });
 

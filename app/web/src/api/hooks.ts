@@ -395,6 +395,32 @@ export function useDeleteAppointment() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.del(`/appointments/${id}`), onSuccess: invalidate });
 }
+// ---------- Client photos (anamnese) ----------
+export interface ClientPhoto {
+  id: string;
+  clientId: string;
+  mime: string;
+  size: number;
+  createdAt: string;
+}
+export function useClientPhotos(clientId: string | null) {
+  return useQuery({ queryKey: ['clientPhotos', clientId], queryFn: () => api.get<ClientPhoto[]>(`/photos/client/${clientId}`), enabled: !!clientId });
+}
+export function useUploadClientPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { clientId: string; data: string }) => api.post<ClientPhoto>(`/photos/client/${input.clientId}`, { data: input.data }),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['clientPhotos', v.clientId] }),
+  });
+}
+export function useDeleteClientPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; clientId: string }) => api.del(`/photos/${input.id}`),
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['clientPhotos', v.clientId] }),
+  });
+}
+
 export function useToggleAppointmentConfirmou() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.post<Appointment>(`/appointments/${id}/confirmou`, {}), onSuccess: invalidate });

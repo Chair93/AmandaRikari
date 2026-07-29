@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Modal from './Modal';
-import { useClientDetail, useDeletePackage, useSettleBill, useUsePackageSession } from '../api/hooks';
+import { useClientDetail, useClientPhotos, useDeleteClientPhoto, useDeletePackage, useSettleBill, useUploadClientPhoto, useUsePackageSession } from '../api/hooks';
+import { compressImage } from '../imageCompress';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, fmtDateBR } from '../format';
 import PackageModal from './PackageModal';
@@ -50,6 +51,8 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
             </button>
           </div>
         )}
+
+        <PhotosSection clientId={clientId} />
 
         {packages.length > 0 && (
           <div>
@@ -172,6 +175,84 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
         <ReceiptModal onClose={() => setSubModal(null)} clientName={client.name} clientPhone={client.phone} date={subModal.date} serviceName={subModal.serviceName} amount={subModal.amount} payment={subModal.payment} />
       )}
     </>
+  );
+}
+
+/** Anamnese e fotos — camera-first on the phone (capture opens the camera),
+ *  compressed on-device before upload, served only to this logged-in
+ *  business and stored encrypted on the server. */
+function PhotosSection({ clientId }: { clientId: string }) {
+  const { isOwner } = useAuth();
+  const { data: photos = [] } = useClientPhotos(clientId);
+  const upload = useUploadClientPhoto();
+  const delPhoto = useDeleteClientPhoto();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setErr(null);
+    try {
+      const data = await compressImage(file);
+      await upload.mutateAsync({ clientId, data });
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Não consegui enviar a foto.');
+    }
+  }
+
+  if (photos.length === 0 && !isOwner) return null;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div className="section-title" style={{ marginBottom: 0 }}>
+          Anamnese e fotos
+        </div>
+        {isOwner && (
+          <button className="pill sm" onClick={() => fileRef.current?.click()} disabled={upload.isPending}>
+            {upload.isPending ? 'Enviando…' : '📷 Adicionar foto'}
+          </button>
+        )}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, marginBottom: 8 }}>
+        Guardadas criptografadas no servidor — só quem está logado vê.
+      </div>
+      {err && <div className="auth-error">{err}</div>}
+      {photos.length > 0 ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {photos.map((p) => (
+            <div key={p.id} style={{ position: 'relative' }}>
+              <a href={`/api/photos/${p.id}/file`} target="_blank" rel="noopener noreferrer" title={`Aberta em tamanho real — ${fmtDateBR(p.createdAt.slice(0, 10))}`}>
+                <img
+                  src={`/api/photos/${p.id}/file`}
+                  alt={`Foto de ${fmtDateBR(p.createdAt.slice(0, 10))}`}
+                  style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)', display: 'block' }}
+                  loading="lazy"
+                />
+              </a>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textAlign: 'center', marginTop: 2 }}>{fmtDateBR(p.createdAt.slice(0, 10))}</div>
+              {isOwner && (
+                <button
+                  className="icon-btn"
+                  aria-label="Excluir foto"
+                  style={{ position: 'absolute', top: -6, right: -6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, width: 22, height: 22, lineHeight: 1 }}
+                  onClick={() => {
+                    if (window.confirm('Excluir esta foto? Não tem volta.')) delPhoto.mutate({ id: p.id, clientId });
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Nenhuma foto ainda — tire uma foto da ficha de anamnese no celular e guarde aqui.</div>
+      )}
+      {isOwner && <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPick} />}
+    </div>
   );
 }
 
