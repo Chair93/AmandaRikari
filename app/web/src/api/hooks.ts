@@ -430,3 +430,14 @@ export function useToggleAppointmentConfirmou() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.post<Appointment>(`/appointments/${id}/confirmou`, {}), onSuccess: invalidate });
 }
+export function useCreateAgendaBlock() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (input: { date: string; time?: string; durationMin?: number; allDay?: boolean; motivo?: string }) => api.post('/appointments/blocks', input),
+    onSuccess: invalidate,
+  });
+}
+export function useDeleteAgendaBlock() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (id: string) => api.del(`/appointments/blocks/${id}`), onSuccess: invalidate });
+}

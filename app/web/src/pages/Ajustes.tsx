@@ -508,6 +508,7 @@ function ReceiptCard({ settings }: { settings: Settings }) {
     receiptPhone: settings.receiptPhone || '',
     receiptAddress: settings.receiptAddress || '',
     receiptCity: settings.receiptCity || '',
+    pixKey: settings.pixKey || '',
   });
 
   function bind(key: keyof typeof draft) {
@@ -542,6 +543,11 @@ function ReceiptCard({ settings }: { settings: Settings }) {
         <label className="field" style={{ width: 180 }}>
           Cidade
           <input className="input" placeholder="São Paulo — SP" {...bind('receiptCity')} />
+        </label>
+        <label className="field" style={{ width: 260 }}>
+          Chave Pix
+          <input className="input" placeholder="CPF, e-mail, telefone ou aleatória" {...bind('pixKey')} />
+          <span style={{ fontWeight: 500, fontSize: 11 }}>Com a chave preenchida, o recibo sai com QR Code e "Pix copia e cola" no valor exato.</span>
         </label>
       </fieldset>
     </div>

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAppointment, useSettings, useToggleAppointmentConfirmou } from '../api/hooks';
+import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAgendaBlock, useDeleteAppointment, useSettings, useToggleAppointmentConfirmou } from '../api/hooks';
 import ClientDetailModal from '../components/ClientDetailModal';
 import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
 import { fillNome, fillWaTemplate, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
+import BlockModal from '../components/BlockModal';
 import TransactionModal from '../components/TransactionModal';
 import { fmtBRL } from '../format';
 import type { Appointment } from '../api/types';
@@ -36,7 +37,9 @@ export default function Agenda() {
   const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string; defaultDate?: string; defaultClientId?: string; defaultServiceId?: string } | null>(null);
   const [atender, setAtender] = useState<Appointment | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [blockModal, setBlockModal] = useState(false);
   const toggleConfirmou = useToggleAppointmentConfirmou();
+  const deleteBlock = useDeleteAgendaBlock();
   const deleteAppointment = useDeleteAppointment();
   const { data: clientesData } = useClientesReport();
   const { data: settings } = useSettings();
@@ -54,6 +57,7 @@ export default function Agenda() {
 
   const today = todayStr();
   const appointments = dayAgenda?.appointments || [];
+  const blocks = dayAgenda?.blocks || [];
   const availableSlots = dayAgenda?.availableSlots || [];
 
   function whatsAppReminder(a: Appointment) {
@@ -144,11 +148,33 @@ export default function Agenda() {
                     {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
                   </div>
                   {isOwner && (
-                    <button className="pill accent sm" onClick={() => setModal({})}>
-                      + Agendamento
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="pill ghost sm" onClick={() => setBlockModal(true)}>
+                        🔒 Bloquear
+                      </button>
+                      <button className="pill accent sm" onClick={() => setModal({})}>
+                        + Agendamento
+                      </button>
+                    </div>
                   )}
                 </div>
+
+                {blocks.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                    {blocks.map((b) => (
+                      <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--surface-2)', borderRadius: 12, fontSize: 12.5 }}>
+                        <span>🔒</span>
+                        <span style={{ fontWeight: 600, flex: 'none' }}>{b.allDay ? 'Dia inteiro' : `${b.time} até ${endMin(b.time, b.durationMin)}`}</span>
+                        <span style={{ color: 'var(--text-muted)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.motivo || 'bloqueado'}</span>
+                        {isOwner && (
+                          <button className="icon-btn" aria-label="Remover bloqueio" onClick={() => deleteBlock.mutate(b.id)}>
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {appointments.length > 0 ? (
                   <div className="list">
@@ -301,6 +327,7 @@ export default function Agenda() {
         />
       )}
       {detailId && <ClientDetailModal clientId={detailId} onClose={() => setDetailId(null)} />}
+      {blockModal && <BlockModal onClose={() => setBlockModal(false)} defaultDate={selectedDate} />}
     </>
   );
 }

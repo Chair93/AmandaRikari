@@ -38,6 +38,7 @@ const bodySchema = z.object({
   receiptPhone: z.string().max(40).optional(),
   receiptAddress: z.string().max(160).optional(),
   receiptCity: z.string().max(80).optional(),
+  pixKey: z.string().max(120).optional(),
   salaMode: z.enum(['off', 'fixo', 'pct']).optional(),
   salaFixo: z.number().min(0).optional(),
   salaPct: z.number().min(0).max(100).optional(),

@@ -158,6 +158,8 @@ export interface Settings {
   receiptPhone: string;
   receiptAddress: string;
   receiptCity: string;
+  /** Pix key shown on receipts as copia-e-cola/QR. */
+  pixKey: string;
   /** Rented treatment room: 'fixo' = salaFixo R$ per atendimento; 'pct' = salaPct% of its value. */
   salaMode: 'off' | 'fixo' | 'pct';
   salaFixo: number;
@@ -218,9 +220,19 @@ export interface Appointment {
   tx?: { id: string; amount: number } | null;
 }
 
+export interface AgendaBlock {
+  id: string;
+  date: string;
+  time: string;
+  durationMin: number;
+  allDay: boolean;
+  motivo: string;
+}
+
 export interface DayAgenda {
   date: string;
   appointments: Appointment[];
+  blocks: AgendaBlock[];
   availableSlots: string[];
 }
 

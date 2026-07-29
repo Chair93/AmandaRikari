@@ -230,6 +230,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
         receiptPhone: d.settings.receiptPhone || '',
         receiptAddress: d.settings.receiptAddress || '',
         receiptCity: d.settings.receiptCity || '',
+        pixKey: d.settings.pixKey || '',
         salaMode: d.settings.salaMode || 'off',
         salaFixo: d.settings.salaFixo || 0,
         salaPct: d.settings.salaPct || 0,

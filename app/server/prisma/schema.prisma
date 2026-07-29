@@ -42,8 +42,24 @@ model Business {
   recurring    Recurring[]
   packages     Package[]
   appointments Appointment[]
+  agendaBlocks AgendaBlock[]
   clientPhotos ClientPhoto[]
   settings     Settings?
+}
+
+/// Time the Agenda must treat as taken without a client: lunch, a doctor's
+/// visit, vacation. Blocks remove their slots from the available list.
+model AgendaBlock {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  date        String // 'YYYY-MM-DD'
+  time        String   @default("00:00") // ignored when allDay
+  durationMin Int      @default(60)
+  allDay      Boolean  @default(false)
+  motivo      String   @default("")
+
+  @@index([businessId, date])
 }
 
 model Membership {
@@ -330,6 +346,8 @@ model Settings {
   receiptPhone       String  @default("")
   receiptAddress     String  @default("")
   receiptCity        String  @default("")
+  /// Pix key — printed on receipts as copia-e-cola/QR so clients can pay.
+  pixKey             String  @default("")
   /// Rented treatment room: what the space owner charges per atendimento.
   /// 'off' = no rented room; 'fixo' = salaFixo reais each; 'pct' = salaPct%
   /// of the atendimento's value. Books an automatic despesa like the
