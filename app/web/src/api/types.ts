@@ -207,6 +207,9 @@ export interface Appointment {
   durationMin: number;
   status: 'confirmed' | 'cancelled';
   note: string | null;
+  /** Atendimento registered from this appointment (null until it happens). */
+  txId?: string | null;
+  tx?: { id: string; amount: number } | null;
 }
 
 export interface DayAgenda {

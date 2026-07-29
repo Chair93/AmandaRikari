@@ -105,6 +105,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
       svcIdMap.set(s.id, row.id);
     }
     const pkgIdMap = new Map<string, string>();
+    const txIdMap = new Map<string, string>();
     for (const p of d.packages || []) {
       if (!cliIdMap.get(p.clientId)) continue;
       const row = await tx.package.create({
@@ -131,7 +132,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
         equipmentId: it.kind === 'equipment' ? eqIdMap.get(it.equipmentId || it.refId) || null : null,
       }));
       const sales = (t.sales || []).map((sl: any) => ({ productId: prodIdMap.get(sl.productId), qty: sl.qty, unitPrice: sl.unitPrice, unitCost: sl.unitCost })).filter((sl: any) => sl.productId);
-      await tx.transaction.create({
+      const createdTx = await tx.transaction.create({
         data: {
           businessId,
           type: t.type,
@@ -164,6 +165,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           sales: { create: sales },
         },
       });
+      if (t.id) txIdMap.set(t.id, createdTx.id);
     }
     for (const b of d.bills || []) {
       await tx.bill.create({
@@ -203,6 +205,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           durationMin: a.durationMin || 60,
           status: a.status || 'confirmed',
           note: a.note || null,
+          txId: a.txId ? txIdMap.get(a.txId) || null : null,
         },
       });
     }

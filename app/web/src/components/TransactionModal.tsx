@@ -45,12 +45,20 @@ function TransactionForm({
   editingTx,
   defaultType,
   defaultClientId,
+  defaultServiceId,
+  defaultDate,
+  appointmentId,
   lockType,
 }: {
   onClose: () => void;
   editingTx?: Transaction | null;
   defaultType?: 'receita' | 'despesa';
   defaultClientId?: string;
+  /** Pre-fills service + items/price — used when registering from the Agenda. */
+  defaultServiceId?: string;
+  defaultDate?: string;
+  /** Agenda appointment to link the created atendimento to. */
+  appointmentId?: string;
   lockType?: boolean;
 }) {
   const { data: categories = [] } = useCategories();
@@ -68,7 +76,7 @@ function TransactionForm({
   const [categoryId, setCategoryId] = useState(editingTx?.categoryId || '');
   const [clientId, setClientId] = useState(editingTx?.clientId || defaultClientId || '');
   const [serviceId, setServiceId] = useState(editingTx?.serviceId || '');
-  const [date, setDate] = useState(editingTx?.date || todayStr());
+  const [date, setDate] = useState(editingTx?.date || defaultDate || todayStr());
   const [note, setNote] = useState(editingTx?.note || '');
   const [items, setItems] = useState<ItemRow[]>(
     editingTx?.items.map((it) => ({ id: nextRowId(), kind: it.kind, refId: (it.productId || it.equipmentId)!, qty: String(it.qty) })) || []
@@ -98,6 +106,17 @@ function TransactionForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, categories]);
+
+  // Coming from the Agenda: apply the appointment's service once services
+  // arrive (they may still be loading when the modal mounts). Runs at most
+  // once so it never clobbers what the user changed by hand.
+  const [serviceApplied, setServiceApplied] = useState(false);
+  useEffect(() => {
+    if (serviceApplied || !defaultServiceId || editingTx || services.length === 0) return;
+    setServiceApplied(true);
+    onSelectService(defaultServiceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services, serviceApplied, defaultServiceId, editingTx]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -224,6 +243,7 @@ function TransactionForm({
           distanciaKm: mode === 'receita' ? numOr0(distanciaKm) : 0,
           payment: mode === 'receita' ? payment : null,
           parcelas: mode === 'receita' && payment === 'credito' ? parcelas : null,
+          appointmentId: !editingTx && mode === 'receita' ? appointmentId || null : null,
         });
       }
       onClose();
@@ -511,15 +531,32 @@ export default function TransactionModal({
   editingTxId,
   defaultType,
   defaultClientId,
+  defaultServiceId,
+  defaultDate,
+  appointmentId,
   lockType,
 }: {
   onClose: () => void;
   editingTxId?: string | null;
   defaultType?: 'receita' | 'despesa';
   defaultClientId?: string;
+  defaultServiceId?: string;
+  defaultDate?: string;
+  appointmentId?: string;
   lockType?: boolean;
 }) {
   const { data: editingTx, isLoading } = useTransaction(editingTxId);
   if (editingTxId && isLoading) return null;
-  return <TransactionForm onClose={onClose} editingTx={editingTx} defaultType={defaultType} defaultClientId={defaultClientId} lockType={lockType} />;
+  return (
+    <TransactionForm
+      onClose={onClose}
+      editingTx={editingTx}
+      defaultType={defaultType}
+      defaultClientId={defaultClientId}
+      defaultServiceId={defaultServiceId}
+      defaultDate={defaultDate}
+      appointmentId={appointmentId}
+      lockType={lockType}
+    />
+  );
 }

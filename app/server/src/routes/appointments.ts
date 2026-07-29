@@ -38,7 +38,7 @@ router.get('/', async (req: AuthedRequest, res) => {
       status: 'confirmed',
       ...(from && to ? { date: { gte: from, lte: to } } : {}),
     },
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } } },
+    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
   });
   res.json(rows);
@@ -53,7 +53,7 @@ router.get('/day', async (req: AuthedRequest, res) => {
     prisma.settings.upsert({ where: { businessId: req.businessId }, update: {}, create: { businessId: req.businessId! } }),
     prisma.appointment.findMany({
       where: { businessId: req.businessId, date, status: 'confirmed' },
-      include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } } },
+      include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
       orderBy: { time: 'asc' },
     }),
   ]);
@@ -78,7 +78,7 @@ router.post('/', async (req: AuthedRequest, res) => {
   await assertOwned(req.businessId!, { clientIds: [parsed.data.clientId], serviceIds: [parsed.data.serviceId] });
   const row = await prisma.appointment.create({
     data: { businessId: req.businessId!, durationMin: 60, ...parsed.data, status: 'confirmed' },
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } } },
+    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
   });
   res.status(201).json(row);
 });
@@ -92,7 +92,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const row = await prisma.appointment.update({
     where: { id: existing.id },
     data: parsed.data,
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } } },
+    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
   });
   res.json(row);
 });

@@ -207,6 +207,7 @@ export interface TxInput {
   distanciaKm?: number | null;
   payment?: string | null;
   parcelas?: number | null;
+  appointmentId?: string | null;
   capital?: 'aporte' | 'pagamento' | null;
   capitalKind?: 'capital' | 'emprestimo' | null;
   socio?: string | null;

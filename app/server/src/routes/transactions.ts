@@ -28,6 +28,8 @@ const bodySchema = z.object({
   distanciaKm: z.number().optional().nullable(),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
   parcelas: z.number().int().min(1).max(24).optional().nullable(),
+  /** Agenda appointment this atendimento fulfills — linked after creation. */
+  appointmentId: z.string().optional().nullable(),
   // sócio (partner) fields — when `capital` is set this is a contribution/payout, not a normal tx
   capital: z.enum(['aporte', 'pagamento']).optional().nullable(),
   capitalKind: z.enum(['capital', 'emprestimo']).optional().nullable(),
@@ -189,6 +191,11 @@ router.post('/', async (req: AuthedRequest, res) => {
         data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, accrualOnly: true, note: 'Uso da sala' },
       });
       await adjustSalaBill(tx, businessId, d.date, salaAmount, ctx.settings.salaOwner || '');
+    }
+    if (d.appointmentId) {
+      // updateMany so a forged/foreign id silently no-ops instead of linking
+      // across businesses.
+      await tx.appointment.updateMany({ where: { id: d.appointmentId, businessId }, data: { txId: created.id } });
     }
     return created;
   });

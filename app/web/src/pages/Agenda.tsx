@@ -5,6 +5,8 @@ import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
 import { fillWaTemplate } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
+import TransactionModal from '../components/TransactionModal';
+import { fmtBRL } from '../format';
 import type { Appointment } from '../api/types';
 import { IconChevronLeft, IconChevronRight } from '../icons';
 
@@ -31,6 +33,7 @@ export default function Agenda() {
   const { isOwner } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string } | null>(null);
+  const [atender, setAtender] = useState<Appointment | null>(null);
   const deleteAppointment = useDeleteAppointment();
   const { data: clientesData } = useClientesReport();
   const { data: settings } = useSettings();
@@ -159,7 +162,19 @@ export default function Agenda() {
                             <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.service?.name || 'Atendimento'}{a.note ? ` · ${a.note}` : ''}</div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            {zap && (
+                            {a.tx ? (
+                              <span className="badge" style={{ background: 'var(--income-soft)', color: 'var(--income-text)', fontWeight: 700 }}>
+                                ✓ atendido · {fmtBRL(a.tx.amount)}
+                              </span>
+                            ) : (
+                              isOwner &&
+                              a.date <= today && (
+                                <button className="pill sm accent" onClick={() => setAtender(a)}>
+                                  Registrar atendimento
+                                </button>
+                              )
+                            )}
+                            {zap && !a.tx && (
                               <a className="pill sm" style={{ textDecoration: 'none', background: 'var(--income-soft)', color: 'var(--income-text)' }} href={zap} target="_blank" rel="noopener noreferrer">
                                 Lembrete WhatsApp
                               </a>
@@ -237,6 +252,17 @@ export default function Agenda() {
         </div>
       </div>
       {modal && <AppointmentModal onClose={() => setModal(null)} editingAppointment={modal.editing} defaultDate={selectedDate} defaultTime={modal.defaultTime} />}
+      {atender && (
+        <TransactionModal
+          onClose={() => setAtender(null)}
+          defaultType="receita"
+          lockType
+          defaultClientId={atender.clientId}
+          defaultServiceId={atender.serviceId || undefined}
+          defaultDate={atender.date}
+          appointmentId={atender.id}
+        />
+      )}
     </>
   );
 }
