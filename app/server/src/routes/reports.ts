@@ -23,7 +23,7 @@ const router = Router();
 router.use(requireAuth);
 
 export async function loadAll(businessId: string) {
-  const [transactions, categories, clients, products, equipment, services, settings, bills, packages] = await Promise.all([
+  const [transactions, categories, clients, products, equipment, services, settings, bills, packages, appointments] = await Promise.all([
     prisma.transaction.findMany({ where: { businessId }, include: { items: true, sales: true } }),
     prisma.category.findMany({ where: { businessId } }),
     prisma.client.findMany({ where: { businessId } }),
@@ -33,8 +33,9 @@ export async function loadAll(businessId: string) {
     prisma.settings.upsert({ where: { businessId }, update: {}, create: { businessId } }),
     prisma.bill.findMany({ where: { businessId } }),
     prisma.package.findMany({ where: { businessId } }),
+    prisma.appointment.findMany({ where: { businessId } }),
   ]);
-  return { transactions: transactions as unknown as TxRow[], categories: categories as CategoryRow[], clients, products, equipment, services, settings, bills, packages };
+  return { transactions: transactions as unknown as TxRow[], categories: categories as CategoryRow[], clients, products, equipment, services, settings, bills, packages, appointments };
 }
 
 function categoryName(categories: CategoryRow[] & { name?: string }[], id: string) {
@@ -75,6 +76,24 @@ export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
     const quando = dias === 0 ? 'HOJE' : dias === 1 ? 'amanhã' : `${alvo.toLocaleDateString('pt-BR', { weekday: 'long' })} (${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')})`;
     alerts.push({ id: 'b' + c.id, kind: 'birthday', overdue: dias === 0, text: `🎂 ${c.name} faz aniversário ${quando}`, phone: c.phone, clientName: c.name });
   });
+
+  // Booked appointments from the last 7 days that never became an
+  // atendimento — the money probably happened, the register didn't. One
+  // aggregated alert so a busy week doesn't flood the list.
+  const seteDiasAtras = new Date(hojeDate.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const semRegistro = data.appointments.filter((a) => a.status === 'confirmed' && !a.txId && a.date < hoje && a.date >= seteDiasAtras);
+  if (semRegistro.length > 0) {
+    const dias = [...new Set(semRegistro.map((a) => a.date))].sort().map((d) => d.slice(8, 10) + '/' + d.slice(5, 7));
+    alerts.push({
+      id: 'apt-sem-registro',
+      kind: 'appointment',
+      overdue: true,
+      text:
+        semRegistro.length === 1
+          ? `1 agendamento (${dias[0]}) ficou sem atendimento registrado — abra a Agenda pra registrar`
+          : `${semRegistro.length} agendamentos (${dias.join(', ')}) ficaram sem atendimento registrado`,
+    });
+  }
   data.bills
     .filter((b) => !b.settled)
     .forEach((b) => {

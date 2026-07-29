@@ -240,7 +240,7 @@ export interface PackageRow {
 
 export interface Alert {
   id: string;
-  kind: 'bill' | 'stock' | 'client' | 'birthday';
+  kind: 'bill' | 'stock' | 'client' | 'birthday' | 'appointment';
   overdue: boolean;
   text: string;
   /** birthday alerts carry these so the UI can offer a one-tap WhatsApp. */

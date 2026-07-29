@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useHomeReport, useSettings } from '../api/hooks';
+import { useDayAgenda, useHomeReport, useSettings } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
+import { todayStr } from '../format';
 import { fillNome, waLink, WA_NIVER_PADRAO } from '../waTemplate';
+import GuideModal from '../components/GuideModal';
 import TransactionModal from '../components/TransactionModal';
 import ClientModal from '../components/ClientModal';
 import BillModal from '../components/BillModal';
@@ -101,14 +103,16 @@ export default function Home() {
   const navigate = useNavigate();
   const { data } = useHomeReport();
   const { data: settings } = useSettings();
+  const { data: hoje } = useDayAgenda(todayStr());
   const { isOwner } = useAuth();
   const [modal, setModal] = useState<ModalKind>(null);
+  const [guide, setGuide] = useState(false);
 
   const hour = new Date().getHours();
   const saudacao = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   const dataLabel = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
-  const alertRoute: Record<string, string> = { bill: '/contas', stock: '/estoque', client: '/clientes' };
+  const alertRoute: Record<string, string> = { bill: '/contas', stock: '/estoque', client: '/clientes', appointment: '/agenda' };
 
   function runAction(key: ActionKey) {
     if (key === 'sell-product') return navigate('/estoque');
@@ -128,6 +132,28 @@ export default function Home() {
             {saudacao} — {dataLabel}
           </div>
         </div>
+
+        {hoje && hoje.appointments.length > 0 && (
+          <div>
+            <div className="eyebrow">AGENDA DE HOJE</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {hoje.appointments.map((a) => (
+                <button key={a.id} className="pill block" onClick={() => navigate('/agenda')} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontWeight: 700, flex: 'none', width: 44 }}>{a.time}</span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.client.name}
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {a.service?.name || 'Atendimento'}</span>
+                  </span>
+                  {a.tx ? (
+                    <span className="badge" style={{ background: 'var(--income-soft)', color: 'var(--income-text)', flex: 'none' }}>✓ atendido</span>
+                  ) : a.confirmou ? (
+                    <span className="badge" style={{ flex: 'none' }}>confirmou</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isOwner && (
           <div>
@@ -166,6 +192,9 @@ export default function Home() {
             </button>
             <button className="pill ghost" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={() => navigate('/lancamentos')}>
               Lançamentos
+            </button>
+            <button className="pill ghost" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={() => setGuide(true)}>
+              ❓ Como usar
             </button>
           </div>
         </div>
@@ -211,6 +240,7 @@ export default function Home() {
       {modal === 'client' && <ClientModal onClose={() => setModal(null)} />}
       {modal === 'bill' && <BillModal onClose={() => setModal(null)} defaultKind="receber" />}
       {modal === 'package' && <PackageModal onClose={() => setModal(null)} />}
+      {guide && <GuideModal onClose={() => setGuide(false)} />}
     </div>
   );
 }
