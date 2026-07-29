@@ -214,6 +214,8 @@ export interface Appointment {
   status: 'confirmed' | 'cancelled';
   /** Client answered the reminder confirming they'll come. */
   confirmou: boolean;
+  /** Token for the public one-tap confirmation link (/c/:token). */
+  confirmToken?: string | null;
   note: string | null;
   /** Atendimento registered from this appointment (null until it happens). */
   txId?: string | null;

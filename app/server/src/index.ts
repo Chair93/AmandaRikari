@@ -117,6 +117,41 @@ app.use('/api/team', teamRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/photos', photosRoutes);
 
+// Public one-tap confirmation: the WhatsApp reminder carries /c/<token>, the
+// client taps it and the appointment is marked "confirmou" — no login, no
+// WhatsApp API. The token is an unguessable cuid; the page shows only what
+// the client already knows (their own booking).
+const confirmLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false });
+app.get('/c/:token', confirmLimiter, async (req, res) => {
+  const token = String(req.params.token || '');
+  const pagina = (titulo: string, corpo: string, emoji: string) =>
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo}</title></head>` +
+    `<body style="margin:0;font-family:Georgia,'Times New Roman',serif;background:#f7f0ec;color:#2a2220;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px">` +
+    `<div style="max-width:420px;text-align:center;background:#fffdfb;border-radius:24px;padding:40px 32px;box-shadow:0 8px 40px rgb(90 60 50/.12)">` +
+    `<div style="font-size:56px;margin-bottom:12px">${emoji}</div><h1 style="font-size:24px;margin:0 0 10px">${titulo}</h1>` +
+    `<p style="font-size:16px;line-height:1.6;margin:0;color:#6b5d57">${corpo}</p></div></body></html>`;
+  try {
+    const ap = /^[a-z0-9]{10,40}$/.test(token)
+      ? await prisma.appointment.findUnique({ where: { confirmToken: token }, include: { client: { select: { name: true } }, service: { select: { name: true } } } })
+      : null;
+    if (!ap || ap.status !== 'confirmed') {
+      return res.status(404).send(pagina('Link não encontrado', 'Esse link de confirmação não existe mais. Fale direto com a gente pelo WhatsApp. 💗', '🌸'));
+    }
+    if (!ap.confirmou) await prisma.appointment.update({ where: { id: ap.id }, data: { confirmou: true } });
+    const [y, m, d] = ap.date.split('-');
+    const nome = ap.client.name.split(' ')[0];
+    return res.send(
+      pagina(
+        'Presença confirmada!',
+        `Obrigada, ${nome}! Te esperamos dia <strong>${d}/${m}/${y}</strong> às <strong>${ap.time}</strong>${ap.service ? ` para ${ap.service.name}` : ''}. Até lá! 💗`,
+        '✅'
+      )
+    );
+  } catch {
+    return res.status(500).send(pagina('Ops', 'Algo deu errado por aqui. Tente de novo em instantes.', '🌧️'));
+  }
+});
+
 // In production the built frontend (app/web/dist) is copied into ./public
 // alongside this compiled server, so one process serves the API and the SPA.
 if (process.env.NODE_ENV === 'production') {

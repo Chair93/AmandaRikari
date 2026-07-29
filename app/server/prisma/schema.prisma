@@ -453,6 +453,9 @@ model Appointment {
   /// Client replied to the reminder confirming they'll show up. Separate
   /// from status: 'confirmed' there means "booked", not "answered".
   confirmou   Boolean  @default(false)
+  /// Unguessable token for the public one-tap confirmation link that rides
+  /// the WhatsApp reminder (GET /c/:token needs no login).
+  confirmToken String? @unique @default(cuid())
   note        String?
   /// The atendimento (transaction) registered from this appointment — lets
   /// the Agenda show what actually happened. Cleared if the tx is deleted.

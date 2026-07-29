@@ -26,6 +26,12 @@ export function fillNome(template: string, fallback: string, clientName: string)
   return (template.trim() || fallback).replaceAll('{nome}', clientName.split(' ')[0]);
 }
 
+/** Appends the one-tap confirmation link to a reminder message. */
+export function comLinkConfirmacao(msg: string, confirmToken: string | null | undefined): string {
+  if (!confirmToken) return msg;
+  return `${msg}\n\nPra confirmar sua presença é só tocar aqui: ${window.location.origin}/c/${confirmToken}`;
+}
+
 /** wa.me link for a Brazilian phone with a prefilled message. */
 export function waLink(phone: string | null | undefined, text: string): string {
   const fone = (phone || '').replace(/\D/g, '');

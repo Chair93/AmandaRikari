@@ -4,7 +4,7 @@ import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAgendaB
 import ClientDetailModal from '../components/ClientDetailModal';
 import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
-import { fillNome, fillWaTemplate, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
+import { comLinkConfirmacao, fillNome, fillWaTemplate, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
 import BlockModal from '../components/BlockModal';
 import TransactionModal from '../components/TransactionModal';
@@ -64,12 +64,15 @@ export default function Agenda() {
     const fone = (a.client.phone || '').replace(/\D/g, '');
     if (!fone) return null;
     const numero = fone.length <= 11 ? '55' + fone : fone;
-    const msg = fillWaTemplate(settings?.waTemplate || '', {
-      clientName: a.client.name,
-      date: a.date,
-      time: a.time,
-      serviceName: a.service?.name || null,
-    });
+    const msg = comLinkConfirmacao(
+      fillWaTemplate(settings?.waTemplate || '', {
+        clientName: a.client.name,
+        date: a.date,
+        time: a.time,
+        serviceName: a.service?.name || null,
+      }),
+      a.confirmToken
+    );
     return `https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(msg)}`;
   }
 

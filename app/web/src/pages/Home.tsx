@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDayAgenda, useHomeReport, useSettings } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
-import { fillNome, fillWaTemplate, waLink, WA_NIVER_PADRAO } from '../waTemplate';
+import { comLinkConfirmacao, fillNome, fillWaTemplate, waLink, WA_NIVER_PADRAO } from '../waTemplate';
 import GuideModal from '../components/GuideModal';
 import TransactionModal from '../components/TransactionModal';
 import ClientModal from '../components/ClientModal';
@@ -162,7 +162,10 @@ export default function Home() {
             <div className="eyebrow">LEMBRETES DE AMANHÃ — UM TOQUE POR CLIENTE</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {amanha.appointments.map((a) => {
-                const msg = fillWaTemplate(settings?.waTemplate || '', { clientName: a.client.name, date: a.date, time: a.time, serviceName: a.service?.name || null });
+                const msg = comLinkConfirmacao(
+                  fillWaTemplate(settings?.waTemplate || '', { clientName: a.client.name, date: a.date, time: a.time, serviceName: a.service?.name || null }),
+                  a.confirmToken
+                );
                 return (
                   <div key={a.id} className="pill block" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'default' }}>
                     <span style={{ fontWeight: 700, flex: 'none', width: 44 }}>{a.time}</span>
