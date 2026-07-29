@@ -117,7 +117,15 @@ router.post('/:id/settle', async (req: AuthedRequest, res) => {
 router.post('/:id/reopen', async (req: AuthedRequest, res) => {
   const existing = await prisma.bill.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
-  const row = await prisma.bill.update({ where: { id: existing.id }, data: { settled: false, settledAt: null } });
+  const row = await prisma.$transaction(async (tx) => {
+    // Undo the settlement's cash movement too — leaving the payment
+    // transaction behind would double the money when the bill is settled
+    // again (and permanently overstate caixa if it never is).
+    if (existing.txId) {
+      await tx.transaction.deleteMany({ where: { businessId: req.businessId!, OR: [{ id: existing.txId }, { feeOf: existing.txId }] } });
+    }
+    return tx.bill.update({ where: { id: existing.id }, data: { settled: false, settledAt: null, txId: null } });
+  });
   res.json(row);
 });
 

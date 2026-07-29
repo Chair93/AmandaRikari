@@ -10,7 +10,7 @@ router.use(requireOwnerForWrites);
 /** Full JSON export — same shape usable for backup, re-import and the
  *  nightly e-mail backup. */
 export async function exportBusiness(businessId: string) {
-  const [categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments] = await Promise.all([
+  const [categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, agendaBlocks, clientPhotos] = await Promise.all([
     prisma.category.findMany({ where: { businessId } }),
     prisma.client.findMany({ where: { businessId } }),
     prisma.product.findMany({ where: { businessId } }),
@@ -22,8 +22,12 @@ export async function exportBusiness(businessId: string) {
     prisma.package.findMany({ where: { businessId } }),
     prisma.settings.findUnique({ where: { businessId } }),
     prisma.appointment.findMany({ where: { businessId } }),
+    prisma.agendaBlock.findMany({ where: { businessId } }),
+    // Photo METADATA only — the encrypted files live on the volume and are
+    // reconnected by keeping the same photo ids on restore.
+    prisma.clientPhoto.findMany({ where: { businessId } }),
   ] as const);
-  return { categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, exportedAt: new Date().toISOString() };
+  return { categories, clients, products, equipment, services, transactions, bills, recurring, packages, settings, appointments, agendaBlocks, clientPhotos, exportedAt: new Date().toISOString() };
 }
 
 router.get('/', async (req: AuthedRequest, res) => {
@@ -41,6 +45,8 @@ const restoreSchema = z.object({
   recurring: z.array(z.any()).optional(),
   packages: z.array(z.any()).optional(),
   appointments: z.array(z.any()).optional(),
+  agendaBlocks: z.array(z.any()).optional(),
+  clientPhotos: z.array(z.any()).optional(),
   settings: z.any().optional(),
 });
 
@@ -59,6 +65,8 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     // go before those rows are deleted — otherwise the whole restore aborts
     // with a foreign-key error (P2003) for anyone who has used the Agenda.
     await tx.appointment.deleteMany({ where: { businessId } });
+    await tx.agendaBlock.deleteMany({ where: { businessId } });
+    await tx.clientPhoto.deleteMany({ where: { businessId } });
     await tx.serviceItem.deleteMany({ where: { service: { businessId } } });
     await tx.package.deleteMany({ where: { businessId } });
     await tx.bill.deleteMany({ where: { businessId } });
@@ -208,6 +216,22 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           txId: a.txId ? txIdMap.get(a.txId) || null : null,
           confirmou: !!a.confirmou,
         },
+      });
+    }
+    for (const b of d.agendaBlocks || []) {
+      await tx.agendaBlock.create({
+        data: { businessId, date: b.date, time: b.time || '00:00', durationMin: b.durationMin || 60, allDay: !!b.allDay, motivo: b.motivo || '' },
+      });
+    }
+    for (const p of d.clientPhotos || []) {
+      const clientId = cliIdMap.get(p.clientId);
+      if (!clientId || !p.id) continue;
+      // Keep the ORIGINAL photo id: the encrypted file on the volume is named
+      // by it, so a same-server restore reconnects every photo. On a fresh
+      // server the rows restore but files are absent — the gallery shows the
+      // metadata and the image 404s, which is the honest outcome.
+      await tx.clientPhoto.create({
+        data: { id: p.id, businessId, clientId, tipo: p.tipo || 'anamnese', txId: p.txId ? txIdMap.get(p.txId) || null : null, mime: p.mime || 'image/jpeg', size: p.size || 0 },
       });
     }
     if (d.settings) {
