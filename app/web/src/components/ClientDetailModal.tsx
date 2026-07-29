@@ -9,7 +9,7 @@ import BillModal from './BillModal';
 import ReceiptModal from './ReceiptModal';
 import TransactionModal from './TransactionModal';
 import PromptModal from './PromptModal';
-import type { Bill } from '../api/types';
+import type { Bill, TxSummary } from '../api/types';
 
 export default function ClientDetailModal({ clientId, onClose }: { clientId: string; onClose: () => void }) {
   const { data } = useClientDetail(clientId);
@@ -26,6 +26,8 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
     | { kind: 'editTx'; id: string }
     | null
   >(null);
+
+  const { data: fotos = [] } = useClientPhotos(clientId);
 
   if (!data) return null;
   const { client, pago, aberto, visitas, ticketMedio, bills, history, packages } = data;
@@ -52,7 +54,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
           </div>
         )}
 
-        <PhotosSection clientId={clientId} />
+        <PhotosSection clientId={clientId} history={history} />
 
         {packages.length > 0 && (
           <div>
@@ -120,27 +122,44 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
           <div className="section-title">Histórico</div>
           {history.length > 0 ? (
             <div className="list">
-              {history.map((tx) => (
-                <div key={tx.id} className="list-row">
-                  <button className="list-row clickable" style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setSubModal({ kind: 'editTx', id: tx.id })}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{tx.categoryName}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmtDateBR(tx.date)}</div>
-                  </button>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: tx.type === 'receita' ? 'var(--income-text)' : 'var(--expense-text)' }}>
-                    {(tx.type === 'receita' ? '' : '− ') + fmtBRL(tx.amount)}
-                  </span>
-                  {tx.type === 'receita' && (
-                    <button
-                      className="pill ghost sm"
-                      onClick={() =>
-                        setSubModal({ kind: 'receipt', date: tx.date, serviceName: tx.categoryName, amount: tx.amount, payment: tx.payment })
-                      }
-                    >
-                      recibo
+              {history.map((tx) => {
+                const fotosDoTx = fotos.filter((p) => p.txId === tx.id);
+                return (
+                  <div key={tx.id} className="list-row" style={{ flexWrap: 'wrap' }}>
+                    <button className="list-row clickable" style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setSubModal({ kind: 'editTx', id: tx.id })}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{tx.categoryName}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmtDateBR(tx.date)}</div>
                     </button>
-                  )}
-                </div>
-              ))}
+                    <span style={{ fontSize: 13, fontWeight: 600, color: tx.type === 'receita' ? 'var(--income-text)' : 'var(--expense-text)' }}>
+                      {(tx.type === 'receita' ? '' : '− ') + fmtBRL(tx.amount)}
+                    </span>
+                    {tx.type === 'receita' && (
+                      <button
+                        className="pill ghost sm"
+                        onClick={() =>
+                          setSubModal({ kind: 'receipt', date: tx.date, serviceName: tx.categoryName, amount: tx.amount, payment: tx.payment })
+                        }
+                      >
+                        recibo
+                      </button>
+                    )}
+                    {fotosDoTx.length > 0 && (
+                      <div style={{ flexBasis: '100%', display: 'flex', gap: 6, marginTop: 6 }}>
+                        {fotosDoTx.map((p) => (
+                          <a key={p.id} href={`/api/photos/${p.id}/file`} target="_blank" rel="noopener noreferrer" title={TIPO_LABEL[p.tipo]}>
+                            <img
+                              src={`/api/photos/${p.id}/file`}
+                              alt={TIPO_LABEL[p.tipo]}
+                              style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }}
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state">Nenhum lançamento ainda.</div>
@@ -185,22 +204,34 @@ const GALERIA_COMPACTA = 6;
  *  stored encrypted on the server. Every photo carries a fixed tipo so the
  *  gallery can filter; the newest anamnese is flagged "atual" and the rest
  *  stay as history (health declarations are never overwritten). */
-function PhotosSection({ clientId }: { clientId: string }) {
+function PhotosSection({ clientId, history }: { clientId: string; history: TxSummary[] }) {
   const { isOwner } = useAuth();
   const { data: photos = [] } = useClientPhotos(clientId);
   const upload = useUploadClientPhoto();
   const delPhoto = useDeleteClientPhoto();
   const fileRef = useRef<HTMLInputElement>(null);
   const tipoRef = useRef<PhotoTipo>('anamnese');
+  const txRef = useRef<string>('');
   const [choosing, setChoosing] = useState(false);
+  const [linking, setLinking] = useState(false);
   const [filtro, setFiltro] = useState<'todas' | 'anamnese' | 'ad'>('todas');
   const [showAll, setShowAll] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const atendimentos = history.filter((h) => h.type === 'receita').slice(0, 12);
+
   function pickTipo(t: PhotoTipo) {
     tipoRef.current = t;
+    txRef.current = '';
     setChoosing(false);
-    fileRef.current?.click();
+    // Antes/depois documents a specific atendimento — offer the link before
+    // opening the camera. Anamnese and outras go straight through.
+    if ((t === 'antes' || t === 'depois') && atendimentos.length > 0) {
+      txRef.current = atendimentos[0].id; // default: the most recent one
+      setLinking(true);
+    } else {
+      fileRef.current?.click();
+    }
   }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -210,7 +241,7 @@ function PhotosSection({ clientId }: { clientId: string }) {
     setErr(null);
     try {
       const data = await compressImage(file);
-      await upload.mutateAsync({ clientId, data, tipo: tipoRef.current });
+      await upload.mutateAsync({ clientId, data, tipo: tipoRef.current, txId: txRef.current || null });
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : 'Não consegui enviar a foto.');
     }
@@ -247,6 +278,31 @@ function PhotosSection({ clientId }: { clientId: string }) {
               {TIPO_LABEL[t]}
             </button>
           ))}
+        </div>
+      )}
+      {linking && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600 }}>De qual atendimento?</span>
+          <select className="input" style={{ maxWidth: 280, padding: '7px 10px', fontSize: 12.5 }} defaultValue={txRef.current} onChange={(e) => (txRef.current = e.target.value)}>
+            {atendimentos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {fmtDateBR(t.date)} — {t.categoryName} — {fmtBRL(t.amount)}
+              </option>
+            ))}
+            <option value="">Sem vínculo</option>
+          </select>
+          <button
+            className="pill sm accent"
+            onClick={() => {
+              setLinking(false);
+              fileRef.current?.click();
+            }}
+          >
+            📷 Continuar
+          </button>
+          <button className="pill ghost sm" onClick={() => setLinking(false)}>
+            cancelar
+          </button>
         </div>
       )}
       {photos.length > 0 && (

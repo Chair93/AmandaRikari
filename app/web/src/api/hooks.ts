@@ -401,6 +401,8 @@ export interface ClientPhoto {
   id: string;
   clientId: string;
   tipo: PhotoTipo;
+  /** Atendimento this photo documents, when linked. */
+  txId: string | null;
   mime: string;
   size: number;
   createdAt: string;
@@ -411,7 +413,8 @@ export function useClientPhotos(clientId: string | null) {
 export function useUploadClientPhoto() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { clientId: string; data: string; tipo: PhotoTipo }) => api.post<ClientPhoto>(`/photos/client/${input.clientId}`, { data: input.data, tipo: input.tipo }),
+    mutationFn: (input: { clientId: string; data: string; tipo: PhotoTipo; txId?: string | null }) =>
+      api.post<ClientPhoto>(`/photos/client/${input.clientId}`, { data: input.data, tipo: input.tipo, txId: input.txId || null }),
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['clientPhotos', v.clientId] }),
   });
 }

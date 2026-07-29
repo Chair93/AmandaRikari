@@ -16,6 +16,8 @@ const MAX_BYTES = 5 * 1024 * 1024; // post-compression photos are ~300KB; 5MB is
 const uploadSchema = z.object({
   data: z.string().min(50).max(8_000_000),
   tipo: z.enum(['anamnese', 'antes', 'depois', 'outra']).optional(),
+  /** Atendimento the photo documents — must belong to this business+client. */
+  txId: z.string().optional().nullable(),
 });
 
 router.get('/client/:clientId', async (req: AuthedRequest, res) => {
@@ -38,7 +40,13 @@ router.post('/client/:clientId', json({ limit: '8mb' }), async (req: AuthedReque
   const buf = Buffer.from(m[2], 'base64');
   if (buf.length === 0 || buf.length > MAX_BYTES) return res.status(400).json({ error: 'Imagem muito grande (máx. 5MB).' });
 
-  const row = await prisma.clientPhoto.create({ data: { businessId: req.businessId!, clientId: client.id, tipo: parsed.data.tipo || 'anamnese', mime, size: buf.length } });
+  let txId: string | null = null;
+  if (parsed.data.txId) {
+    const tx = await prisma.transaction.findFirst({ where: { id: parsed.data.txId, businessId: req.businessId, clientId: client.id } });
+    txId = tx ? tx.id : null; // foreign/forged id silently unlinks instead of failing the upload
+  }
+
+  const row = await prisma.clientPhoto.create({ data: { businessId: req.businessId!, clientId: client.id, tipo: parsed.data.tipo || 'anamnese', txId, mime, size: buf.length } });
   try {
     savePhoto(req.businessId!, row.id, buf);
   } catch (e) {

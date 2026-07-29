@@ -117,6 +117,10 @@ model ClientPhoto {
   /// 'anamnese' | 'antes' | 'depois' | 'outra' — fixed set on purpose, so
   /// the gallery filters stay meaningful instead of drowning in free text.
   tipo       String   @default("anamnese")
+  /// Atendimento this photo documents (antes/depois) — turns the client's
+  /// history into a visual timeline. Cleared if the tx is deleted.
+  txId       String?
+  tx         Transaction? @relation(fields: [txId], references: [id], onDelete: SetNull)
   mime       String
   size       Int
   createdAt  DateTime @default(now())
@@ -264,6 +268,8 @@ model Transaction {
   sales TransactionSale[]
   /// Agenda appointments fulfilled by this atendimento.
   appointments Appointment[]
+  /// Antes/depois photos documenting this atendimento.
+  photos       ClientPhoto[]
 
   createdAt DateTime @default(now())
 
