@@ -5,7 +5,7 @@ import Modal from './Modal';
 const PASSOS: { titulo: string; como: string[] }[] = [
   {
     titulo: '🗓️ Agendar uma cliente',
-    como: ['Agenda → toque num horário livre (ou em "+ Agendamento")', 'Escolha a cliente e o serviço → Salvar', 'Cliente nova? Cadastre antes em Início → "Novo cliente"'],
+    como: ['Início → "Agendar atendimento" (ou Agenda → toque num horário livre)', 'Escolha a cliente e o serviço → Salvar', 'Cliente nova? Cadastre antes em Início → "Novo cliente"'],
   },
   {
     titulo: '💬 Lembrar a cliente do horário',

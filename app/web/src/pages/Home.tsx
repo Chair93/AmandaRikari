@@ -9,8 +9,9 @@ import TransactionModal from '../components/TransactionModal';
 import ClientModal from '../components/ClientModal';
 import BillModal from '../components/BillModal';
 import PackageModal from '../components/PackageModal';
+import AppointmentModal from '../components/AppointmentModal';
 
-type ModalKind = 'tx-receita' | 'tx-despesa' | 'client' | 'bill' | 'package' | null;
+type ModalKind = 'tx-receita' | 'tx-despesa' | 'client' | 'bill' | 'package' | 'appointment' | null;
 type ActionKey = Exclude<ModalKind, null> | 'sell-product';
 
 /** The trailing chevron on a row that goes somewhere. Hidden above the phone
@@ -35,6 +36,19 @@ const ACTIONS: { key: ActionKey; title: string; desc: string; tint: string; prim
     icon: (
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    key: 'appointment',
+    title: 'Agendar atendimento',
+    desc: 'Marca dia e horário na Agenda',
+    tint: '#c2803f',
+    icon: (
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="2.5" y="3.5" width="11" height="10" rx="2" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M5.7 10.2l1.6 1.6 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -278,6 +292,7 @@ export default function Home() {
       {modal === 'client' && <ClientModal onClose={() => setModal(null)} />}
       {modal === 'bill' && <BillModal onClose={() => setModal(null)} defaultKind="receber" />}
       {modal === 'package' && <PackageModal onClose={() => setModal(null)} />}
+      {modal === 'appointment' && <AppointmentModal onClose={() => setModal(null)} defaultDate={todayStr()} />}
       {guide && <GuideModal onClose={() => setGuide(false)} />}
     </div>
   );
