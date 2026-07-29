@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
-import { useCategories, useClients, useDeleteTransaction, useEquipment, useProducts, useSaveTransaction, useServices, useSettings, useTransaction } from '../api/hooks';
+import { useCategories, useClients, useDeleteTransaction, useEquipment, useProductInventario, useProducts, useSaveTransaction, useServices, useSettings, useTransaction } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import type { PaymentMethod, Transaction } from '../api/types';
+import type { PaymentMethod, Product, Transaction } from '../api/types';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr, UNIT_LABEL } from '../format';
 import { computeServiceCostPreview, feePctForPreview, salaFeePreview } from '../calcPreview';
 
@@ -93,6 +93,9 @@ function TransactionForm({
   const [capitalKind, setCapitalKind] = useState<'capital' | 'emprestimo'>(editingTx?.capitalKind || 'capital');
   const [socio, setSocio] = useState(editingTx?.socio || '');
   const [error, setError] = useState<string | null>(null);
+  // Products this atendimento just emptied — the save holds the modal open
+  // to ask "acabou mesmo?" while the answer is fresh.
+  const [esgotados, setEsgotados] = useState<Product[]>([]);
 
   const pickable = (c: { id: string; name: string }) => !INTERNAL_CATEGORIES.has(c.name) || c.id === categoryId;
   const despesaCats = categories.filter((c) => c.type === 'despesa' && pickable(c));
@@ -249,6 +252,18 @@ function TransactionForm({
           parcelas: mode === 'receita' && payment === 'credito' ? parcelas : null,
           appointmentId: !editingTx && mode === 'receita' ? appointmentId || null : null,
         });
+        // Did this atendimento's ficha usage cross any product to zero? Ask
+        // now, while she's looking at the pot. Only on new entries — edits
+        // reshuffle old numbers and the question would mislead.
+        if (!editingTx && mode === 'receita') {
+          const consumo: Record<string, number> = {};
+          items.filter((it) => it.kind === 'product' && it.refId && numOr0(it.qty) > 0).forEach((it) => (consumo[it.refId] = (consumo[it.refId] || 0) + numOr0(it.qty)));
+          const zeraram = products.filter((p) => consumo[p.id] && p.packageQty > 0 && p.stock > 0.005 && p.stock - consumo[p.id] / p.packageQty <= 0.005);
+          if (zeraram.length > 0) {
+            setEsgotados(zeraram);
+            return; // finish (onSaved/onClose) after the prompts
+          }
+        }
       }
       onSaved?.();
       onClose();
@@ -270,6 +285,19 @@ function TransactionForm({
     if (lockType && defaultType === 'despesa') return 'Lançar despesa';
     return 'Novo lançamento';
   };
+
+  if (esgotados.length > 0) {
+    return (
+      <EsgotadoPrompt
+        products={esgotados}
+        onDone={() => {
+          setEsgotados([]);
+          onSaved?.();
+          onClose();
+        }}
+      />
+    );
+  }
 
   return (
     <Modal title={titleFor()} onClose={onClose}>
@@ -526,6 +554,94 @@ function TransactionForm({
           </button>
         )}
       </div>
+    </Modal>
+  );
+}
+
+/** After an atendimento empties a pot (by the app's math), confirm against
+ *  the shelf while she's standing next to it: really gone → inventory goes
+ *  to zero; some left → she estimates and the app books the ganho. Every
+ *  answer is an inventory adjustment on the product's record, which is what
+ *  later powers the "fix the ficha técnica" suggestion. */
+function EsgotadoPrompt({ products, onDone }: { products: Product[]; onDone: () => void }) {
+  const inventario = useProductInventario();
+  const [idx, setIdx] = useState(0);
+  const [perguntandoSobra, setPerguntandoSobra] = useState(false);
+  const [sobra, setSobra] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+
+  const p = products[idx];
+  const unidade = UNIT_LABEL[p.unit] || p.unit;
+
+  function proximo() {
+    setPerguntandoSobra(false);
+    setSobra('');
+    setErr(null);
+    if (idx + 1 < products.length) setIdx(idx + 1);
+    else onDone();
+  }
+
+  async function responder(real: number, note: string) {
+    setErr(null);
+    try {
+      await inventario.mutateAsync({ id: p.id, real, note });
+      proximo();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Não consegui ajustar.');
+    }
+  }
+
+  return (
+    <Modal title="Acabou o produto?" onClose={proximo}>
+      <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+        Pelas contas do app, <strong>{p.name}</strong> chegou ao fim com esse atendimento. Dá uma olhada no pote:
+      </div>
+      {err && <div className="auth-error">{err}</div>}
+      {!perguntandoSobra ? (
+        <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button className="btn-secondary" onClick={proximo}>
+            Depois eu confiro
+          </button>
+          <button className="pill" onClick={() => setPerguntandoSobra(true)}>
+            Ainda tem um pouco
+          </button>
+          <button className="btn-primary" onClick={() => responder(0, 'confirmado no fim do atendimento')} disabled={inventario.isPending}>
+            Acabou mesmo
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className="field">
+            Quanto sobra, mais ou menos? ({unidade})
+            <input className="input" inputMode="decimal" placeholder={`Ex: ${Math.round(p.packageQty * 0.2)}`} value={sobra} onChange={(e) => setSobra(e.target.value)} autoFocus />
+            <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>Chute honesto serve — dá pra corrigir depois na Contagem do Estoque.</span>
+          </label>
+          <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn-secondary" onClick={() => setPerguntandoSobra(false)}>
+              Voltar
+            </button>
+            <button
+              className="btn-primary"
+              disabled={inventario.isPending}
+              onClick={() => {
+                const v = numOr0(sobra);
+                if (v <= 0) {
+                  setErr('Digite quanto sobra — ou volte e confirme que acabou.');
+                  return;
+                }
+                responder(Math.round((v / p.packageQty) * 10000) / 10000, `sobra estimada no atendimento: ${sobra} ${unidade}`);
+              }}
+            >
+              Ajustar estoque
+            </button>
+          </div>
+        </>
+      )}
+      {products.length > 1 && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+          {idx + 1} de {products.length}
+        </div>
+      )}
     </Modal>
   );
 }

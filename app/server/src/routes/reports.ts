@@ -118,6 +118,28 @@ export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
       const dias = daysBetween(hoje, p.expiresAt!);
       alerts.push({ id: 'x' + p.id, kind: 'stock', overdue: dias < 0, text: dias < 0 ? `${p.name} vencido há ${-dias}d` : `${p.name} vence em ${dias}d` });
     });
+  // Inventory adjustments piling up in one direction mean the ficha técnica
+  // is lying about consumption — suggest fixing the cause, not the symptom.
+  const noventaDias = new Date(hojeDate.getTime() - 90 * 86400000).toISOString().slice(0, 10);
+  const cats = data.categories as ({ id: string; name?: string } & CategoryRow)[];
+  const perdaCatId = cats.find((c) => c.name === 'Perda de inventário')?.id;
+  const ganhoCatId = cats.find((c) => c.name === 'Ganho de inventário')?.id;
+  const ajustes: Record<string, { perdas: number; ganhos: number }> = {};
+  data.transactions.forEach((t) => {
+    if (!t.productId || !t.accrualOnly || t.date < noventaDias) return;
+    if (t.categoryId === perdaCatId) (ajustes[t.productId] ??= { perdas: 0, ganhos: 0 }).perdas++;
+    else if (t.categoryId === ganhoCatId) (ajustes[t.productId] ??= { perdas: 0, ganhos: 0 }).ganhos++;
+  });
+  for (const [pid, a] of Object.entries(ajustes)) {
+    const p = data.products.find((x) => x.id === pid);
+    if (!p) continue;
+    if (a.perdas >= 3 && a.perdas > a.ganhos) {
+      alerts.push({ id: 'fich' + pid, kind: 'stock', overdue: false, text: `${p.name}: ${a.perdas} ajustes de perda em 90 dias — a ficha técnica deve estar marcando MENOS uso que o real. Vale aumentar a quantidade por atendimento.` });
+    } else if (a.ganhos >= 3 && a.ganhos > a.perdas) {
+      alerts.push({ id: 'fich' + pid, kind: 'stock', overdue: false, text: `${p.name}: ${a.ganhos} ajustes de ganho em 90 dias — a ficha técnica deve estar marcando MAIS uso que o real. Vale diminuir a quantidade por atendimento.` });
+    }
+  }
+
   data.clients.forEach((c) => {
     const st = computeClientStats(c.id, data.transactions);
     if (st.diasDesde != null && st.diasDesde > 60) {

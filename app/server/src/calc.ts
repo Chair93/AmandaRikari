@@ -28,6 +28,8 @@ export type TxRow = {
   cashOnly: boolean; // package sale / installment payoff: moves cash, revenue not yet earned
   accrualOnly: boolean; // package session used: earns its share of revenue, no new cash
   packageId: string | null;
+  /** Set on purchases and inventory adjustments — which product it concerns. */
+  productId?: string | null;
   items: TxItem[];
   sales: TxSale[];
 };
