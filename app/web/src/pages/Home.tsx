@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useHomeReport } from '../api/hooks';
+import { useHomeReport, useSettings } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
+import { fillNome, waLink, WA_NIVER_PADRAO } from '../waTemplate';
 import TransactionModal from '../components/TransactionModal';
 import ClientModal from '../components/ClientModal';
 import BillModal from '../components/BillModal';
@@ -99,6 +100,7 @@ const ACTIONS: { key: ActionKey; title: string; desc: string; tint: string; prim
 export default function Home() {
   const navigate = useNavigate();
   const { data } = useHomeReport();
+  const { data: settings } = useSettings();
   const { isOwner } = useAuth();
   const [modal, setModal] = useState<ModalKind>(null);
 
@@ -172,15 +174,32 @@ export default function Home() {
           <div>
             <div className="eyebrow">LEMBRETES</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {data.alerts.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => navigate(alertRoute[a.kind] || '/')}
-                  className={'pill block' + (a.overdue ? ' expense' : '')}
-                >
-                  {a.text}
-                </button>
-              ))}
+              {data.alerts.map((a) =>
+                a.kind === 'birthday' ? (
+                  <div key={a.id} className="pill block" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'default' }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>{a.text}</span>
+                    {a.phone && settings && (
+                      <a
+                        className="pill sm"
+                        style={{ textDecoration: 'none', background: 'var(--income-soft)', color: 'var(--income-text)', flex: 'none' }}
+                        href={waLink(a.phone, fillNome(settings.waBirthday, WA_NIVER_PADRAO, a.clientName || ''))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Dar parabéns 🎉
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    key={a.id}
+                    onClick={() => navigate(alertRoute[a.kind] || '/')}
+                    className={'pill block' + (a.overdue ? ' expense' : '')}
+                  >
+                    {a.text}
+                  </button>
+                )
+              )}
             </div>
           </div>
         )}

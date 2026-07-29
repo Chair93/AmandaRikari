@@ -206,6 +206,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           status: a.status || 'confirmed',
           note: a.note || null,
           txId: a.txId ? txIdMap.get(a.txId) || null : null,
+          confirmou: !!a.confirmou,
         },
       });
     }
@@ -234,6 +235,8 @@ router.post('/restore', async (req: AuthedRequest, res) => {
         salaPct: d.settings.salaPct || 0,
         salaOwner: d.settings.salaOwner || '',
         waTemplate: d.settings.waTemplate || '',
+        waBirthday: d.settings.waBirthday || '',
+        waReactivation: d.settings.waReactivation || '',
         agendaStartHour: d.settings.agendaStartHour ?? 9,
         agendaEndHour: d.settings.agendaEndHour ?? 19,
         agendaSlotMin: d.settings.agendaSlotMin ?? 30,

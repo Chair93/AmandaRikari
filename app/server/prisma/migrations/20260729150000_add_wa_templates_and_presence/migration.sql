@@ -1,0 +1,3 @@
+ALTER TABLE "Settings" ADD COLUMN "waBirthday" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Settings" ADD COLUMN "waReactivation" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Appointment" ADD COLUMN "confirmou" BOOLEAN NOT NULL DEFAULT false;

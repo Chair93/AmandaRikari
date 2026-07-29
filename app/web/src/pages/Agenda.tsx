@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAppointment, useSettings } from '../api/hooks';
+import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAppointment, useSettings, useToggleAppointmentConfirmou } from '../api/hooks';
+import ClientDetailModal from '../components/ClientDetailModal';
 import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
-import { fillWaTemplate } from '../waTemplate';
+import { fillNome, fillWaTemplate, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
 import TransactionModal from '../components/TransactionModal';
 import { fmtBRL } from '../format';
@@ -32,8 +33,10 @@ function endMin(time: string, durationMin: number): string {
 export default function Agenda() {
   const { isOwner } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string } | null>(null);
+  const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string; defaultDate?: string; defaultClientId?: string; defaultServiceId?: string } | null>(null);
   const [atender, setAtender] = useState<Appointment | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const toggleConfirmou = useToggleAppointmentConfirmou();
   const deleteAppointment = useDeleteAppointment();
   const { data: clientesData } = useClientesReport();
   const { data: settings } = useSettings();
@@ -158,7 +161,13 @@ export default function Agenda() {
                             <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>até {endMin(a.time, a.durationMin)}</div>
                           </div>
                           <div style={{ flex: 1, minWidth: 140 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600 }}>{a.client.name}</div>
+                            <button
+                              style={{ all: 'unset', cursor: 'pointer', fontSize: 13, fontWeight: 600, textDecoration: 'underline', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: 3 }}
+                              onClick={() => setDetailId(a.clientId)}
+                              title="Abrir ficha do cliente"
+                            >
+                              {a.client.name}
+                            </button>
                             <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.service?.name || 'Atendimento'}{a.note ? ` · ${a.note}` : ''}</div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -178,6 +187,15 @@ export default function Agenda() {
                               <a className="pill sm" style={{ textDecoration: 'none', background: 'var(--income-soft)', color: 'var(--income-text)' }} href={zap} target="_blank" rel="noopener noreferrer">
                                 Lembrete WhatsApp
                               </a>
+                            )}
+                            {!a.tx && isOwner && (
+                              <button
+                                className={'pill ghost sm' + (a.confirmou ? ' active' : '')}
+                                title="Cliente respondeu confirmando presença?"
+                                onClick={() => toggleConfirmou.mutate(a.id)}
+                              >
+                                {a.confirmou ? '✓ confirmou' : 'confirmou?'}
+                              </button>
                             )}
                             {isOwner && (
                               <>
@@ -229,7 +247,7 @@ export default function Agenda() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface-2)', borderRadius: 14, overflow: 'hidden' }}>
                     {clientesData.inativosList.map((c) => {
                       const hasZap = !!(c.phone && c.phone.replace(/\D/g, '').length >= 10);
-                      const zapHref = `https://wa.me/55${(c.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Oi, ${c.name.split(' ')[0]}! Passando pra saber se você quer agendar sua próxima visita 💗`)}`;
+                      const zapHref = waLink(c.phone, fillNome(settings?.waReactivation || '', WA_REATIVACAO_PADRAO, c.name));
                       return (
                         <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--surface)' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -251,7 +269,16 @@ export default function Agenda() {
           </div>
         </div>
       </div>
-      {modal && <AppointmentModal onClose={() => setModal(null)} editingAppointment={modal.editing} defaultDate={selectedDate} defaultTime={modal.defaultTime} />}
+      {modal && (
+        <AppointmentModal
+          onClose={() => setModal(null)}
+          editingAppointment={modal.editing}
+          defaultDate={modal.defaultDate ?? selectedDate}
+          defaultTime={modal.defaultTime}
+          defaultClientId={modal.defaultClientId}
+          defaultServiceId={modal.defaultServiceId}
+        />
+      )}
       {atender && (
         <TransactionModal
           onClose={() => setAtender(null)}
@@ -261,8 +288,19 @@ export default function Agenda() {
           defaultServiceId={atender.serviceId || undefined}
           defaultDate={atender.date}
           appointmentId={atender.id}
+          onSaved={() => {
+            const a = atender;
+            // Ask after the tx modal is gone; auto-opening without asking
+            // would feel pushy when the client isn't rebooking.
+            setTimeout(() => {
+              if (a && window.confirm('Atendimento registrado! Já quer deixar o retorno agendado?')) {
+                setModal({ defaultClientId: a.clientId, defaultServiceId: a.serviceId || undefined, defaultDate: addDays(a.date, 28), defaultTime: a.time });
+              }
+            }, 150);
+          }}
         />
       )}
+      {detailId && <ClientDetailModal clientId={detailId} onClose={() => setDetailId(null)} />}
     </>
   );
 }

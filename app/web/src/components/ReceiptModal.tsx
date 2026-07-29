@@ -80,6 +80,23 @@ export default function ReceiptModal({
     }
   }
 
+  /** Print-friendly window — the browser's own "save as PDF" does the rest,
+   *  no PDF library needed. */
+  function imprimir() {
+    const w = window.open('', '_blank', 'width=640,height=800');
+    if (!w) return;
+    const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    w.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>Recibo</title><style>` +
+        `body{font-family:Georgia,'Times New Roman',serif;color:#2a2220;margin:48px auto;max-width:520px;padding:0 24px}` +
+        `pre{white-space:pre-wrap;font-family:inherit;font-size:15px;line-height:1.8}` +
+        `</style></head><body><pre>${safe}</pre></body></html>`
+    );
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
   return (
     <Modal title="Recibo" onClose={onClose}>
       <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, lineHeight: 1.6, color: 'var(--text)', background: 'var(--surface-2)', borderRadius: 14, padding: '14px 16px' }}>{text}</div>
@@ -95,6 +112,9 @@ export default function ReceiptModal({
         </button>
         <button className="pill" onClick={copy}>
           {copied ? 'Copiado!' : 'Copiar texto'}
+        </button>
+        <button className="pill" onClick={imprimir}>
+          Imprimir / PDF
         </button>
         <a className="btn-primary" style={{ background: 'oklch(58% 0.13 150)', textDecoration: 'none' }} href={whatsLink} target="_blank" rel="noopener noreferrer">
           Abrir WhatsApp

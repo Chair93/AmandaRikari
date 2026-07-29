@@ -17,7 +17,7 @@ import { api, ApiError } from '../api/client';
 import { changePassword } from '../auth/passwordApi';
 import { useAuth } from '../auth/AuthContext';
 import { numOr0, todayStr } from '../format';
-import { fillWaTemplate, WA_TEMPLATE_PADRAO } from '../waTemplate';
+import { fillNome, fillWaTemplate, WA_NIVER_PADRAO, WA_REATIVACAO_PADRAO, WA_TEMPLATE_PADRAO } from '../waTemplate';
 import { loadXlsx, parseSheetDate, parseSheetNumber, pickField } from '../xlsx';
 import type { Role, Settings } from '../api/types';
 
@@ -396,57 +396,104 @@ function TeamCard() {
   );
 }
 
-/** The Agenda's WhatsApp reminder message, editable with placeholders that
- *  fill themselves from each appointment. A live preview shows exactly what
- *  a client would receive. */
+/** One editable WhatsApp message: textarea + reset + live preview. */
+function WaMessageField({
+  label,
+  hint,
+  value,
+  fallback,
+  preview,
+  onCommit,
+  disabled,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  fallback: string;
+  preview: (template: string) => string;
+  onCommit: (v: string) => void;
+  disabled: boolean;
+}) {
+  const [draft, setDraft] = useState(value || '');
+  return (
+    <fieldset disabled={disabled} style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div>
+        <div style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.45 }}>{hint}</div>
+      </div>
+      <textarea
+        className="input"
+        rows={2}
+        style={{ resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
+        placeholder={fallback}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onCommit(draft.trim())}
+      />
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 12, padding: '8px 12px', fontSize: 12, lineHeight: 1.5 }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>Como a cliente Mariana receberia:</span>
+          {preview(draft)}
+        </div>
+        {draft.trim() !== '' && (
+          <button
+            className="pill ghost sm"
+            style={{ flex: 'none' }}
+            onClick={() => {
+              setDraft('');
+              onCommit('');
+            }}
+          >
+            Voltar pro padrão
+          </button>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
+/** All the WhatsApp messages the app sends, editable with placeholders that
+ *  fill themselves — reminder, birthday and win-back. */
 function WaTemplateCard({ settings }: { settings: Settings }) {
   const { isOwner } = useAuth();
   const saveSettings = useSaveSettings();
-  const [draft, setDraft] = useState(settings.waTemplate || '');
-
-  const preview = fillWaTemplate(draft, {
-    clientName: 'Mariana Silva',
-    date: todayStr(),
-    time: '14:30',
-    serviceName: 'Limpeza de pele',
-  });
+  const sample = { clientName: 'Mariana Silva', date: todayStr(), time: '14:30', serviceName: 'Limpeza de pele' };
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600 }}>Mensagem do WhatsApp (Agenda)</div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Mensagens do WhatsApp</div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1, maxWidth: 520, lineHeight: 1.5 }}>
-          É o lembrete enviado pelo botão da Agenda. Escreva do seu jeito — <strong>{'{nome}'}</strong>, <strong>{'{data}'}</strong>, <strong>{'{hora}'}</strong> e <strong>{'{servico}'}</strong> são preenchidos automaticamente com os dados de cada agendamento.
+          Escreva do seu jeito — <strong>{'{nome}'}</strong> vira o primeiro nome da pessoa; no lembrete da Agenda também valem <strong>{'{data}'}</strong>, <strong>{'{hora}'}</strong> e <strong>{'{servico}'}</strong>.
         </div>
       </div>
-      <fieldset disabled={!isOwner} style={{ border: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <textarea
-          className="input"
-          rows={3}
-          style={{ resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }}
-          placeholder={WA_TEMPLATE_PADRAO}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => saveSettings.mutate({ waTemplate: draft.trim() })}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {draft.trim() !== '' && (
-            <button
-              className="pill ghost sm"
-              onClick={() => {
-                setDraft('');
-                saveSettings.mutate({ waTemplate: '' });
-              }}
-            >
-              Voltar pra mensagem padrão
-            </button>
-          )}
-        </div>
-        <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '10px 14px', fontSize: 12.5, lineHeight: 1.5 }}>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 3 }}>Como a cliente Mariana receberia hoje:</div>
-          {preview}
-        </div>
-      </fieldset>
+      <WaMessageField
+        label="Lembrete de agendamento (Agenda)"
+        hint="Enviado pelo botão 'Lembrete WhatsApp' de cada agendamento."
+        value={settings.waTemplate}
+        fallback={WA_TEMPLATE_PADRAO}
+        preview={(t) => fillWaTemplate(t, sample)}
+        onCommit={(v) => saveSettings.mutate({ waTemplate: v })}
+        disabled={!isOwner}
+      />
+      <WaMessageField
+        label="Parabéns de aniversário (Início)"
+        hint="Aparece no Início na semana do aniversário, com o botão 'Dar parabéns'."
+        value={settings.waBirthday}
+        fallback={WA_NIVER_PADRAO}
+        preview={(t) => fillNome(t, WA_NIVER_PADRAO, sample.clientName)}
+        onCommit={(v) => saveSettings.mutate({ waBirthday: v })}
+        disabled={!isOwner}
+      />
+      <WaMessageField
+        label="Chamar de volta (Clientes / Agenda)"
+        hint="Usada nos botões 'Chamar no WhatsApp' de quem está sumido."
+        value={settings.waReactivation}
+        fallback={WA_REATIVACAO_PADRAO}
+        preview={(t) => fillNome(t, WA_REATIVACAO_PADRAO, sample.clientName)}
+        onCommit={(v) => saveSettings.mutate({ waReactivation: v })}
+        disabled={!isOwner}
+      />
     </div>
   );
 }

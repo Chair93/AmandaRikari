@@ -9,19 +9,24 @@ export default function AppointmentModal({
   editingAppointment,
   defaultDate,
   defaultTime,
+  defaultClientId,
+  defaultServiceId,
 }: {
   onClose: () => void;
   editingAppointment?: Appointment | null;
   defaultDate?: string;
   defaultTime?: string;
+  /** Pre-fill for the "já agendar o retorno?" flow after an atendimento. */
+  defaultClientId?: string;
+  defaultServiceId?: string;
 }) {
   const { data: clients = [] } = useClients();
   const { data: services = [] } = useServices();
   const saveAppointment = useSaveAppointment();
   const deleteAppointment = useDeleteAppointment();
 
-  const [clientId, setClientId] = useState(editingAppointment?.clientId || '');
-  const [serviceId, setServiceId] = useState(editingAppointment?.serviceId || '');
+  const [clientId, setClientId] = useState(editingAppointment?.clientId || defaultClientId || '');
+  const [serviceId, setServiceId] = useState(editingAppointment?.serviceId || defaultServiceId || '');
   const [date, setDate] = useState(editingAppointment?.date || defaultDate || '');
   const [time, setTime] = useState(editingAppointment?.time || defaultTime || '');
   const [durationMin, setDurationMin] = useState(String(editingAppointment?.durationMin || 60));

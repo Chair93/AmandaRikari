@@ -165,6 +165,10 @@ export interface Settings {
   salaOwner: string;
   /** WhatsApp reminder template ({nome}/{data}/{hora}/{servico}); '' = default. */
   waTemplate: string;
+  /** Birthday message ({nome}); '' = default. */
+  waBirthday: string;
+  /** Win-back message ({nome}); '' = default. */
+  waReactivation: string;
   agendaStartHour: number;
   agendaEndHour: number;
   agendaSlotMin: number;
@@ -206,6 +210,8 @@ export interface Appointment {
   time: string;
   durationMin: number;
   status: 'confirmed' | 'cancelled';
+  /** Client answered the reminder confirming they'll come. */
+  confirmou: boolean;
   note: string | null;
   /** Atendimento registered from this appointment (null until it happens). */
   txId?: string | null;
@@ -234,9 +240,12 @@ export interface PackageRow {
 
 export interface Alert {
   id: string;
-  kind: 'bill' | 'stock' | 'client';
+  kind: 'bill' | 'stock' | 'client' | 'birthday';
   overdue: boolean;
   text: string;
+  /** birthday alerts carry these so the UI can offer a one-tap WhatsApp. */
+  phone?: string | null;
+  clientName?: string;
 }
 
 export interface ProlaboreSuggestion {

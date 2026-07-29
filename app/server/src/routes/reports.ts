@@ -58,7 +58,23 @@ router.get('/home', async (req: AuthedRequest, res) => {
 
 export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
   const hoje = todayStr();
-  const alerts: { id: string; kind: string; text: string; overdue: boolean }[] = [];
+  const alerts: { id: string; kind: string; text: string; overdue: boolean; phone?: string | null; clientName?: string }[] = [];
+
+  // Birthdays in the next 7 days — compared by month-day so the stored year
+  // (often unknown/arbitrary) doesn't matter. These come first: a missed
+  // birthday can't be caught up next week.
+  const hojeDate = new Date(hoje + 'T00:00:00');
+  data.clients.forEach((c) => {
+    if (!c.birthday) return;
+    const [, m, d] = c.birthday.split('-').map(Number);
+    if (!m || !d) return;
+    const alvo = new Date(hojeDate.getFullYear(), m - 1, d);
+    if (alvo < hojeDate) alvo.setFullYear(alvo.getFullYear() + 1);
+    const dias = Math.round((alvo.getTime() - hojeDate.getTime()) / 86400000);
+    if (dias > 7) return;
+    const quando = dias === 0 ? 'HOJE' : dias === 1 ? 'amanhã' : `${alvo.toLocaleDateString('pt-BR', { weekday: 'long' })} (${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')})`;
+    alerts.push({ id: 'b' + c.id, kind: 'birthday', overdue: dias === 0, text: `🎂 ${c.name} faz aniversário ${quando}`, phone: c.phone, clientName: c.name });
+  });
   data.bills
     .filter((b) => !b.settled)
     .forEach((b) => {

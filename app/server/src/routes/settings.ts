@@ -43,6 +43,8 @@ const bodySchema = z.object({
   salaPct: z.number().min(0).max(100).optional(),
   salaOwner: z.string().max(80).optional(),
   waTemplate: z.string().max(600).optional(),
+  waBirthday: z.string().max(600).optional(),
+  waReactivation: z.string().max(600).optional(),
   agendaStartHour: z.number().int().min(0).max(23).optional(),
   agendaEndHour: z.number().int().min(1).max(24).optional(),
   agendaSlotMin: z.number().int().min(5).max(240).optional(),

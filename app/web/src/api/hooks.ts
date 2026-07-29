@@ -395,3 +395,7 @@ export function useDeleteAppointment() {
   const invalidate = useInvalidateAll();
   return useMutation({ mutationFn: (id: string) => api.del(`/appointments/${id}`), onSuccess: invalidate });
 }
+export function useToggleAppointmentConfirmou() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (id: string) => api.post<Appointment>(`/appointments/${id}/confirmou`, {}), onSuccess: invalidate });
+}

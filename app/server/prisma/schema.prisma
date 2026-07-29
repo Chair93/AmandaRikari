@@ -313,6 +313,10 @@ model Settings {
   /// WhatsApp reminder template for Agenda. Placeholders {nome}, {data},
   /// {hora}, {servico} are filled client-side. Empty = built-in default.
   waTemplate         String  @default("")
+  /// Birthday congratulation template ({nome}). Empty = built-in default.
+  waBirthday         String  @default("")
+  /// Win-back message for clients who stopped coming ({nome}).
+  waReactivation     String  @default("")
   agendaStartHour    Int     @default(9)
   agendaEndHour      Int     @default(19)
   agendaSlotMin      Int     @default(30)
@@ -399,6 +403,9 @@ model Appointment {
   time        String // 'HH:MM'
   durationMin Int      @default(60)
   status      String   @default("confirmed") // 'confirmed' | 'cancelled'
+  /// Client replied to the reminder confirming they'll show up. Separate
+  /// from status: 'confirmed' there means "booked", not "answered".
+  confirmou   Boolean  @default(false)
   note        String?
   /// The atendimento (transaction) registered from this appointment — lets
   /// the Agenda show what actually happened. Cleared if the tx is deleted.

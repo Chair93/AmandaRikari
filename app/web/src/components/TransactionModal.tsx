@@ -48,6 +48,7 @@ function TransactionForm({
   defaultServiceId,
   defaultDate,
   appointmentId,
+  onSaved,
   lockType,
 }: {
   onClose: () => void;
@@ -59,6 +60,9 @@ function TransactionForm({
   defaultDate?: string;
   /** Agenda appointment to link the created atendimento to. */
   appointmentId?: string;
+  /** Called after a successful save (before closing) — the Agenda uses it
+   *  to offer booking the next session. */
+  onSaved?: () => void;
   lockType?: boolean;
 }) {
   const { data: categories = [] } = useCategories();
@@ -246,6 +250,7 @@ function TransactionForm({
           appointmentId: !editingTx && mode === 'receita' ? appointmentId || null : null,
         });
       }
+      onSaved?.();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar');
@@ -534,6 +539,7 @@ export default function TransactionModal({
   defaultServiceId,
   defaultDate,
   appointmentId,
+  onSaved,
   lockType,
 }: {
   onClose: () => void;
@@ -543,6 +549,7 @@ export default function TransactionModal({
   defaultServiceId?: string;
   defaultDate?: string;
   appointmentId?: string;
+  onSaved?: () => void;
   lockType?: boolean;
 }) {
   const { data: editingTx, isLoading } = useTransaction(editingTxId);
@@ -556,6 +563,7 @@ export default function TransactionModal({
       defaultServiceId={defaultServiceId}
       defaultDate={defaultDate}
       appointmentId={appointmentId}
+      onSaved={onSaved}
       lockType={lockType}
     />
   );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useClientesReport, useDeleteClient } from '../api/hooks';
+import { useClientesReport, useDeleteClient, useSettings } from '../api/hooks';
+import { fillNome, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
 import { useAuth } from '../auth/AuthContext';
 import { CATEGORY_COLORS, fmtBRL, fmtDateBR, monthShortLabel } from '../format';
 import ClientModal from '../components/ClientModal';
@@ -18,6 +19,7 @@ function statusFor(row: ClienteRow) {
 
 export default function Clientes() {
   const { data, isLoading, error, refetch } = useClientesReport();
+  const { data: settings } = useSettings();
   const { isOwner } = useAuth();
   const del = useDeleteClient();
   const [clientModal, setClientModal] = useState<{ open: boolean; editing?: ClienteRow } | null>(null);
@@ -71,7 +73,7 @@ export default function Clientes() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface-2)', borderRadius: 14, overflow: 'hidden' }}>
                 {data.inativosList.map((c) => {
                   const hasZap = !!(c.phone && c.phone.replace(/\D/g, '').length >= 10);
-                  const zapHref = `https://wa.me/55${(c.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Oi, ${c.name.split(' ')[0]}! Passando pra saber se você quer agendar sua próxima limpeza de pele 💗`)}`;
+                  const zapHref = waLink(c.phone, fillNome(settings?.waReactivation || '', WA_REATIVACAO_PADRAO, c.name));
                   return (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', background: 'var(--surface)' }}>
                       <button style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => setDetailId(c.id)}>

@@ -97,6 +97,18 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   res.json(row);
 });
 
+/** Toggle "cliente confirmou presença" — separate from booking status. */
+router.post('/:id/confirmou', async (req: AuthedRequest, res) => {
+  const existing = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  const row = await prisma.appointment.update({
+    where: { id: existing.id },
+    data: { confirmou: !existing.confirmou },
+    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+  });
+  res.json(row);
+});
+
 router.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
