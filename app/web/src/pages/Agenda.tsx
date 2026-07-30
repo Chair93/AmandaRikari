@@ -23,6 +23,11 @@ function startOfWeek(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return addDays(iso, -d.getDay());
 }
+function addMonths(iso: string, n: number): string {
+  const [y, m] = iso.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
 function endMin(time: string, durationMin: number): string {
   const [h, m] = time.split(':').map(Number);
   const total = h * 60 + m + durationMin;
@@ -44,16 +49,39 @@ export default function Agenda() {
   const { data: clientesData } = useClientesReport();
   const { data: settings } = useSettings();
 
+  // Week strip or full month grid — Amanda flips between "esta semana" and
+  // "como está agosto?". The choice sticks across visits.
+  const [view, setViewState] = useState<'semana' | 'mes'>(() => (localStorage.getItem('rikari.agendaView') === 'mes' ? 'mes' : 'semana'));
+  function setView(v: 'semana' | 'mes') {
+    setViewState(v);
+    localStorage.setItem('rikari.agendaView', v);
+  }
+
   const weekStart = startOfWeek(selectedDate);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  const { data: weekAppointments = [] } = useAppointmentsRange(weekDays[0], weekDays[6]);
+  // Month grid: from the Sunday before the 1st to the Saturday after the
+  // last day, so the calendar is always full rows.
+  const monthKey = selectedDate.slice(0, 7);
+  const gridDays = useMemo(() => {
+    const [y, m] = monthKey.split('-').map(Number);
+    const first = `${monthKey}-01`;
+    const last = `${monthKey}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+    const start = startOfWeek(first);
+    const end = addDays(startOfWeek(last), 6);
+    const days: string[] = [];
+    for (let d = start; d <= end; d = addDays(d, 1)) days.push(d);
+    return days;
+  }, [monthKey]);
+  const rangeFrom = view === 'mes' ? gridDays[0] : weekDays[0];
+  const rangeTo = view === 'mes' ? gridDays[gridDays.length - 1] : weekDays[6];
+  const { data: rangeAppointments = [] } = useAppointmentsRange(rangeFrom, rangeTo);
   const { data: dayAgenda } = useDayAgenda(selectedDate);
 
   const countByDate = useMemo(() => {
     const m = new Map<string, number>();
-    weekAppointments.forEach((a) => m.set(a.date, (m.get(a.date) || 0) + 1));
+    rangeAppointments.forEach((a) => m.set(a.date, (m.get(a.date) || 0) + 1));
     return m;
-  }, [weekAppointments]);
+  }, [rangeAppointments]);
 
   const today = todayStr();
   const appointments = dayAgenda?.appointments || [];
@@ -89,9 +117,38 @@ export default function Agenda() {
           {/* Wraps so "Hoje" drops to its own line on a phone instead of being
               pushed off the right edge by the seven day cells. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', rowGap: 8 }}>
-            <button className="icon-btn" aria-label="Semana anterior" onClick={() => setSelectedDate((d) => addDays(d, -7))}>
+            <button
+              className="icon-btn"
+              aria-label={view === 'mes' ? 'Mês anterior' : 'Semana anterior'}
+              onClick={() => setSelectedDate((d) => (view === 'mes' ? addMonths(d, -1) : addDays(d, -7)))}
+            >
               <IconChevronLeft />
             </button>
+            <span className="serif" style={{ fontSize: 15, fontWeight: 600, textTransform: 'capitalize', minWidth: 130 }}>
+              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              className="icon-btn"
+              aria-label={view === 'mes' ? 'Próximo mês' : 'Próxima semana'}
+              onClick={() => setSelectedDate((d) => (view === 'mes' ? addMonths(d, 1) : addDays(d, 7)))}
+            >
+              <IconChevronRight />
+            </button>
+            <button className="pill sm" onClick={() => setSelectedDate(today)}>
+              Hoje
+            </button>
+            <div style={{ flex: 1 }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className={'pill sm' + (view === 'semana' ? ' active' : '')} onClick={() => setView('semana')}>
+                Semana
+              </button>
+              <button className={'pill sm' + (view === 'mes' ? ' active' : '')} onClick={() => setView('mes')}>
+                Mês
+              </button>
+            </div>
+          </div>
+
+          {view === 'semana' ? (
             <div className="agenda-week">
               {weekDays.map((d) => {
                 const count = countByDate.get(d) || 0;
@@ -135,13 +192,64 @@ export default function Agenda() {
                 );
               })}
             </div>
-            <button className="icon-btn" aria-label="Próxima semana" onClick={() => setSelectedDate((d) => addDays(d, 7))}>
-              <IconChevronRight />
-            </button>
-            <button className="pill sm" onClick={() => setSelectedDate(today)}>
-              Hoje
-            </button>
-          </div>
+          ) : (
+            <div className="card" style={{ padding: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                {WEEKDAY_SHORT.map((w) => (
+                  <div key={w} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '2px 0' }}>
+                    {w}
+                  </div>
+                ))}
+                {gridDays.map((d) => {
+                  const count = countByDate.get(d) || 0;
+                  const isSelected = d === selectedDate;
+                  const isToday = d === today;
+                  const foraDoMes = d.slice(0, 7) !== monthKey;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => setSelectedDate(d)}
+                      style={{
+                        all: 'unset',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer',
+                        minHeight: 46,
+                        borderRadius: 10,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
+                        padding: '4px 0',
+                        background: isSelected ? 'var(--accent)' : 'transparent',
+                        color: isSelected ? 'white' : foraDoMes ? 'var(--text-soft, var(--text-muted))' : 'var(--text)',
+                        opacity: foraDoMes && !isSelected ? 0.45 : 1,
+                        border: isToday && !isSelected ? '1.5px solid var(--accent)' : '1.5px solid transparent',
+                      }}
+                    >
+                      <span style={{ fontSize: 13.5, fontWeight: isSelected || isToday ? 700 : 500 }}>{Number(d.slice(8, 10))}</span>
+                      {count > 0 ? (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: '0 5px',
+                            borderRadius: 999,
+                            background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--accent-soft)',
+                            color: isSelected ? 'white' : 'var(--accent-text)',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      ) : (
+                        <span style={{ height: 13 }} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: 2, minWidth: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
