@@ -297,7 +297,7 @@ export default function Estoque() {
   const { data: products = [] } = useProducts();
   const { data: equipment = [] } = useEquipment();
   const { isOwner } = useAuth();
-  const [modal, setModal] = useState<'product' | 'equipment' | null>(null);
+  const [modal, setModal] = useState<'product-op' | 'product-desc' | 'equipment' | null>(null);
 
   const operacionais = products.filter((p) => p.kind !== 'descartavel');
   const descartaveis = products.filter((p) => p.kind === 'descartavel');
@@ -351,7 +351,7 @@ export default function Estoque() {
                 <div className="section-hint">Insumos usados na ficha técnica dos atendimentos (cremes, séruns, etc.).</div>
               </div>
               {isOwner && (
-                <button className="pill accent sm" onClick={() => setModal('product')}>
+                <button className="pill accent sm" onClick={() => setModal('product-op')}>
                   + Produto
                 </button>
               )}
@@ -366,7 +366,7 @@ export default function Estoque() {
               <div className="empty-state">
                 <span>Nenhum produto operacional cadastrado.</span>
                 {isOwner && (
-                  <button className="btn-primary" onClick={() => setModal('product')}>
+                  <button className="btn-primary" onClick={() => setModal('product-op')}>
                     + Produto
                   </button>
                 )}
@@ -383,8 +383,8 @@ export default function Estoque() {
                 <div className="section-hint">Luvas, algodão, agulhas e outros itens de uso único.</div>
               </div>
               {isOwner && (
-                <button className="pill accent sm" onClick={() => setModal('product')}>
-                  + Produto
+                <button className="pill accent sm" onClick={() => setModal('product-desc')}>
+                  + Descartável
                 </button>
               )}
             </div>
@@ -427,7 +427,8 @@ export default function Estoque() {
           </div>
         </div>
       </div>
-      {modal === 'product' && <ProductModal onClose={() => setModal(null)} />}
+      {modal === 'product-op' && <ProductModal onClose={() => setModal(null)} fixedKind="operacional" />}
+      {modal === 'product-desc' && <ProductModal onClose={() => setModal(null)} fixedKind="descartavel" />}
       {modal === 'equipment' && <EquipmentModal onClose={() => setModal(null)} />}
     </>
   );

@@ -4,14 +4,25 @@ import { useSaveProduct } from '../api/hooks';
 import type { Product } from '../api/types';
 import { fmtBRL, numOr0, UNIT_LABEL } from '../format';
 
-export default function ProductModal({ onClose, editingProduct }: { onClose: () => void; editingProduct?: Product | null }) {
+export default function ProductModal({
+  onClose,
+  editingProduct,
+  fixedKind,
+}: {
+  onClose: () => void;
+  editingProduct?: Product | null;
+  /** Set when opened from a specific Estoque section ("+ Produto" under
+   *  Descartáveis creates a descartável, period) — hides the type toggle.
+   *  Editing keeps the toggle so a product can be moved between sections. */
+  fixedKind?: 'operacional' | 'descartavel';
+}) {
   const saveProduct = useSaveProduct();
   const [name, setName] = useState(editingProduct?.name || '');
-  const [unit, setUnit] = useState(editingProduct?.unit || 'ml');
+  const [unit, setUnit] = useState(editingProduct?.unit || (fixedKind === 'descartavel' ? 'unidade' : 'ml'));
   const [packageCost, setPackageCost] = useState(editingProduct ? String(editingProduct.packageCost).replace('.', ',') : '');
   const [packageQty, setPackageQty] = useState(editingProduct ? String(editingProduct.packageQty).replace('.', ',') : '');
   const [salePrice, setSalePrice] = useState(editingProduct?.salePrice ? String(editingProduct.salePrice).replace('.', ',') : '');
-  const [kind, setKind] = useState<'operacional' | 'descartavel'>(editingProduct?.kind || 'operacional');
+  const [kind, setKind] = useState<'operacional' | 'descartavel'>(editingProduct?.kind || fixedKind || 'operacional');
   const [expiresAt, setExpiresAt] = useState(editingProduct?.expiresAt || '');
   const [lowStockAt, setLowStockAt] = useState(editingProduct ? String(editingProduct.lowStockAt).replace('.', ',') : '1');
   const [error, setError] = useState<string | null>(null);
@@ -42,15 +53,17 @@ export default function ProductModal({ onClose, editingProduct }: { onClose: () 
   }
 
   return (
-    <Modal title={editingProduct ? 'Editar produto' : 'Novo produto'} onClose={onClose}>
-      <div className="tab-row">
-        <button className={'tab' + (kind === 'operacional' ? ' active-income' : '')} onClick={() => setKind('operacional')}>
-          Estoque operacional
-        </button>
-        <button className={'tab' + (kind === 'descartavel' ? ' active-accent' : '')} onClick={() => setKind('descartavel')}>
-          Descartável
-        </button>
-      </div>
+    <Modal title={editingProduct ? 'Editar produto' : fixedKind === 'descartavel' ? 'Novo descartável' : fixedKind === 'operacional' ? 'Novo produto de estoque' : 'Novo produto'} onClose={onClose}>
+      {!editingProduct && fixedKind ? null : (
+        <div className="tab-row">
+          <button className={'tab' + (kind === 'operacional' ? ' active-income' : '')} onClick={() => setKind('operacional')}>
+            Estoque operacional
+          </button>
+          <button className={'tab' + (kind === 'descartavel' ? ' active-accent' : '')} onClick={() => setKind('descartavel')}>
+            Descartável
+          </button>
+        </div>
+      )}
       <label className="field">
         Nome
         <input className="input" placeholder="Ex: Creme hidratante" value={name} onChange={(e) => setName(e.target.value)} />
