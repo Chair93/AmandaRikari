@@ -19,7 +19,7 @@ export async function exportBusiness(businessId: string) {
     prisma.transaction.findMany({ where: { businessId }, include: { items: true, sales: true } }),
     prisma.bill.findMany({ where: { businessId } }),
     prisma.recurring.findMany({ where: { businessId } }),
-    prisma.package.findMany({ where: { businessId } }),
+    prisma.package.findMany({ where: { businessId }, include: { services: true } }),
     prisma.settings.findUnique({ where: { businessId } }),
     prisma.appointment.findMany({ where: { businessId }, include: { services: true } }),
     prisma.agendaBlock.findMany({ where: { businessId } }),
@@ -123,11 +123,20 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     const txIdMap = new Map<string, string>();
     for (const p of d.packages || []) {
       if (!cliIdMap.get(p.clientId)) continue;
+      // Combo packages carry a services list; older backups only serviceId.
+      const pkgSvcIds = [
+        ...new Set(
+          (((p.services as { serviceId: string }[] | undefined)?.map((x) => x.serviceId)) || (p.serviceId ? [p.serviceId] : []))
+            .map((sid: string) => svcIdMap.get(sid))
+            .filter(Boolean) as string[]
+        ),
+      ];
       const row = await tx.package.create({
         data: {
           businessId,
           clientId: cliIdMap.get(p.clientId)!,
-          serviceId: p.serviceId ? svcIdMap.get(p.serviceId) || null : null,
+          serviceId: pkgSvcIds[0] || null,
+          services: { create: pkgSvcIds.map((sid) => ({ serviceId: sid })) },
           sessions: p.sessions,
           used: p.used || 0,
           amount: p.amount,

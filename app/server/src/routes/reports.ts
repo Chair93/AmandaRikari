@@ -522,7 +522,7 @@ router.get('/clients/:id', async (req: AuthedRequest, res) => {
   const visitasCount = tx.filter((t) => t.type === 'receita').length;
   const bills = data.bills.filter((b) => b.clientId === client.id);
   const aberto = bills.filter((b) => !b.settled && b.kind === 'receber').reduce((a, b) => a + b.amount, 0);
-  const packages = await prisma.package.findMany({ where: { businessId, clientId: client.id }, orderBy: { date: 'desc' } });
+  const packages = await prisma.package.findMany({ where: { businessId, clientId: client.id }, orderBy: { date: 'desc' }, include: { services: true } });
   // Referral picture: who brought her in, whom she brought, and how much
   // cash those referrals actually generated.
   const indicadoPor = client.indicadoPorId ? await prisma.client.findFirst({ where: { id: client.indicadoPorId, businessId }, select: { id: true, name: true } }) : null;
@@ -543,7 +543,11 @@ router.get('/clients/:id', async (req: AuthedRequest, res) => {
     history: tx.slice(0, 20).map((t) => serializeTx(t, data)),
     packages: packages.map((p) => ({
       ...p,
-      serviceName: data.services.find((s) => s.id === p.serviceId)?.name || null,
+      // Combo packages list every procedure ("Limpeza + Peeling").
+      serviceName:
+        (p.services.length
+          ? p.services.map((x) => data.services.find((s) => s.id === x.serviceId)?.name).filter(Boolean).join(' + ')
+          : data.services.find((s) => s.id === p.serviceId)?.name) || null,
       restantes: p.sessions - p.used,
     })),
   });

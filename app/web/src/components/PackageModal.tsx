@@ -3,13 +3,18 @@ import Modal from './Modal';
 import { useClients, useSavePackage, useServices } from '../api/hooks';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr } from '../format';
 
+/** Accent-insensitive matcher so "radio" finds "Radiofrequência". */
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 export default function PackageModal({ onClose, defaultClientId }: { onClose: () => void; defaultClientId?: string }) {
   const { data: clients = [] } = useClients();
   const { data: services = [] } = useServices();
   const savePackage = useSavePackage();
 
   const [clientId, setClientId] = useState(defaultClientId || '');
-  const [serviceId, setServiceId] = useState(services[0]?.id || '');
+  // Combo packages: each session delivers every marked procedure.
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [busca, setBusca] = useState('');
   const [sessions, setSessions] = useState('5');
   const [amount, setAmount] = useState('');
   const [payment, setPayment] = useState('pix');
@@ -21,8 +26,18 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
 
   const n = Math.round(numOr0(sessions));
   const v = numOr0(amount);
-  const sv = services.find((s) => s.id === serviceId);
-  const avulso = sv ? sv.price * n : 0;
+  const selecionados = services.filter((s) => serviceIds.includes(s.id));
+  const avulso = selecionados.reduce((a, s) => a + numOr0(s.price), 0) * n;
+
+  // Same hybrid picker as the Agenda: pill wall up to 8 services, search past
+  // that, marked ones pinned to the front while searching.
+  const muitos = services.length > 8;
+  const buscando = muitos && busca.trim().length > 0;
+  const naoSelecionados = services.filter((s) => !serviceIds.includes(s.id) && norm(s.name).includes(norm(busca)));
+  const pillList = buscando ? [...selecionados, ...naoSelecionados] : services;
+  function toggleService(id: string) {
+    setServiceIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }
   let preview = 'Preencha sessões e valor.';
   if (n > 0 && v > 0) {
     const desconto = avulso > 0 ? ` · desconto de ${Math.round((1 - v / avulso) * 100)}% sobre o avulso (${fmtBRL(avulso)})` : '';
@@ -46,7 +61,8 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
     try {
       await savePackage.mutateAsync({
         clientId,
-        serviceId: serviceId || null,
+        serviceIds,
+        serviceId: serviceIds[0] || null,
         sessions: n,
         amount: parsedAmount,
         payment,
@@ -74,16 +90,26 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
           ))}
         </select>
       </label>
-      <label className="field">
-        Serviço do pacote
-        <select className="input" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="field">
+        Serviços do pacote (toque pra marcar — pode mais de um)
+        {muitos && <input className="input" placeholder="Buscar serviço..." value={busca} onChange={(e) => setBusca(e.target.value)} />}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {pillList.map((s) => {
+            const on = serviceIds.includes(s.id);
+            return (
+              <button key={s.id} className={'pill sm' + (on ? ' active' : '')} onClick={() => toggleService(s.id)}>
+                {on ? '✓ ' : ''}
+                {s.name}
+                {numOr0(s.price) > 0 && <span style={{ opacity: 0.65 }}> · {fmtBRL(s.price)}</span>}
+              </button>
+            );
+          })}
+          {buscando && naoSelecionados.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>Nenhum serviço com esse nome.</span>}
+        </div>
+        {selecionados.length > 1 && (
+          <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>Cada sessão inclui: {selecionados.map((s) => s.name).join(' + ')}</span>
+        )}
+      </div>
       <div className="field-row">
         <label className="field">
           Nº de sessões

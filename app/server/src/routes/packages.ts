@@ -24,6 +24,8 @@ router.get('/', async (req: AuthedRequest, res) => {
 const createSchema = z.object({
   clientId: z.string().min(1),
   serviceId: z.string().optional().nullable(),
+  /** Combo package: every session delivers all of these procedures. */
+  serviceIds: z.array(z.string().min(1)).max(10).optional(),
   sessions: z.number().int().gt(0),
   amount: z.number().gt(0),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']),
@@ -38,8 +40,11 @@ router.post('/', async (req: AuthedRequest, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const d = parsed.data;
-  await assertOwned(req.businessId!, { clientIds: [d.clientId], serviceIds: [d.serviceId] });
-  const sv = d.serviceId ? await prisma.service.findFirst({ where: { id: d.serviceId, businessId: req.businessId } }) : null;
+  const svcIds = [...new Set((d.serviceIds?.length ? d.serviceIds : d.serviceId ? [d.serviceId] : []).filter(Boolean))] as string[];
+  await assertOwned(req.businessId!, { clientIds: [d.clientId], serviceIds: svcIds });
+  const svs = svcIds.length ? await prisma.service.findMany({ where: { id: { in: svcIds }, businessId: req.businessId } }) : [];
+  // Human label for descriptions: "Limpeza + Peeling".
+  const svLabel = svcIds.map((id) => svs.find((x) => x.id === id)?.name).filter(Boolean).join(' + ');
 
   if (d.mode === 'prazo') {
     const n = Math.max(1, d.parcelas || 1);
@@ -49,7 +54,8 @@ router.post('/', async (req: AuthedRequest, res) => {
         data: {
           businessId: req.businessId!,
           clientId: d.clientId,
-          serviceId: d.serviceId || null,
+          serviceId: svcIds[0] || null,
+          services: { create: svcIds.map((sid) => ({ serviceId: sid })) },
           sessions: d.sessions,
           amount: d.amount,
           date: todayStr(),
@@ -64,7 +70,7 @@ router.post('/', async (req: AuthedRequest, res) => {
           data: {
             businessId: req.businessId!,
             kind: 'receber',
-            desc: `Pacote ${d.sessions}x${sv ? ' ' + sv.name : ''} — parcela ${i + 1}/${n}`,
+            desc: `Pacote ${d.sessions}x${svLabel ? ' ' + svLabel : ''} — parcela ${i + 1}/${n}`,
             amount: val,
             due: addMonthsToDate(first, i),
             clientId: d.clientId,
@@ -96,7 +102,7 @@ router.post('/', async (req: AuthedRequest, res) => {
         parcelas: parcelasCartao,
         date: todayStr(),
         cashOnly: true, // money's in, but the sessions aren't delivered yet — see use-session
-        note: `Pacote ${d.sessions}x${sv ? ' ' + sv.name : ''}`,
+        note: `Pacote ${d.sessions}x${svLabel ? ' ' + svLabel : ''}`,
       },
     });
     if (fee > 0) {
@@ -118,7 +124,8 @@ router.post('/', async (req: AuthedRequest, res) => {
       data: {
         businessId: req.businessId!,
         clientId: d.clientId,
-        serviceId: d.serviceId || null,
+        serviceId: svcIds[0] || null,
+        services: { create: svcIds.map((sid) => ({ serviceId: sid })) },
         sessions: d.sessions,
         amount: d.amount,
         date: todayStr(),
@@ -131,18 +138,21 @@ router.post('/', async (req: AuthedRequest, res) => {
 });
 
 router.post('/:id/use-session', async (req: AuthedRequest, res) => {
-  const pkg = await prisma.package.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  const pkg = await prisma.package.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { services: true } });
   if (!pkg) return res.status(404).json({ error: 'not_found' });
   if (pkg.used >= pkg.sessions) return res.status(400).json({ error: 'Pacote já totalmente utilizado' });
-  const sv = pkg.serviceId
-    ? await prisma.service.findFirst({ where: { id: pkg.serviceId }, include: { items: true } })
-    : null;
+  // Combo package: a session delivers every linked procedure, so fichas
+  // merge. Falls back to the legacy single serviceId.
+  const svcIds = pkg.services.length ? pkg.services.map((x) => x.serviceId) : pkg.serviceId ? [pkg.serviceId] : [];
+  const svsAll = svcIds.length ? await prisma.service.findMany({ where: { id: { in: svcIds } }, include: { items: true } }) : [];
+  const svs = svcIds.map((id) => svsAll.find((x) => x.id === id)).filter((x): x is (typeof svsAll)[number] => !!x);
+  const svLabel = svs.map((x) => x.name).join(' + ');
   const [products, equipment, settings] = await Promise.all([
     prisma.product.findMany({ where: { businessId: req.businessId } }),
     prisma.equipment.findMany({ where: { businessId: req.businessId } }),
     prisma.settings.findUnique({ where: { businessId: req.businessId } }),
   ]);
-  const items = sv ? sv.items.map((it) => ({ kind: it.kind, refId: (it.productId || it.equipmentId)!, qty: it.qty })) : [];
+  const items = svs.flatMap((s) => s.items.map((it) => ({ kind: it.kind, refId: (it.productId || it.equipmentId)!, qty: it.qty })));
   const variableCost = items.length ? computeServiceCost(items, products, equipment, settings!) : 0;
   // Recognize this session's proportional share of the package price now —
   // the cash already came in at sale/installment time, so this earns
@@ -165,7 +175,7 @@ router.post('/:id/use-session', async (req: AuthedRequest, res) => {
         packageId: pkg.id,
         date: todayStr(),
         consumoBaixado: true,
-        note: `Sessão do pacote${sv ? ' — ' + sv.name : ''}`,
+        note: `Sessão do pacote${svLabel ? ' — ' + svLabel : ''}`,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
       },
     });

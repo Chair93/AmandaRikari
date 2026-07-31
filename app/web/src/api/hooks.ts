@@ -295,6 +295,8 @@ export function usePackages(clientId?: string) {
 export interface PackageInput {
   clientId: string;
   serviceId?: string | null;
+  /** Combo package: every session delivers all of these procedures. */
+  serviceIds?: string[];
   sessions: number;
   amount: number;
   payment: string;

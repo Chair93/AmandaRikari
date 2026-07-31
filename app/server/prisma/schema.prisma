@@ -211,6 +211,7 @@ model Service {
   packages     Package[]
   appointments Appointment[]
   appointmentServices AppointmentService[]
+  packageServices     PackageService[]
 
   @@index([businessId])
 }
@@ -440,8 +441,21 @@ model Package {
   parcelas     Int?
   transactions Transaction[]
   bills        Bill[]
+  /// Combo packages: every session delivers all of these procedures.
+  /// `serviceId` stays as the first one for legacy reads.
+  services     PackageService[]
 
   @@index([businessId])
+}
+
+model PackageService {
+  id        String  @id @default(cuid())
+  packageId String
+  package   Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
 }
 
 model Appointment {
