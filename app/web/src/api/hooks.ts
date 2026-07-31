@@ -15,6 +15,7 @@ import type {
   Equipment,
   HomeData,
   PackageRow,
+  PrevisaoEstoque,
   Product,
   TeamMember,
   Role,
@@ -59,7 +60,7 @@ export function useClients(enabled = true) {
 export function useSaveClient() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; phone?: string | null; birthday?: string | null; notes?: string | null }) =>
+    mutationFn: (input: { id?: string; name: string; phone?: string | null; birthday?: string | null; notes?: string | null; indicadoPorId?: string | null }) =>
       input.id ? api.put<Client>(`/clients/${input.id}`, input) : api.post<Client>('/clients', input),
     onSuccess: invalidate,
   });
@@ -337,6 +338,9 @@ export function useContasReport() {
 }
 export function useClientesReport() {
   return useQuery({ queryKey: ['reports', 'clientes'], queryFn: () => api.get<ClientesData>('/reports/clientes') });
+}
+export function usePrevisaoEstoque() {
+  return useQuery({ queryKey: ['reports', 'previsao-estoque'], queryFn: () => api.get<PrevisaoEstoque>('/reports/previsao-estoque') });
 }
 export function useClientDetail(id: string | null) {
   return useQuery({

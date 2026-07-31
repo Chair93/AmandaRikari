@@ -13,17 +13,34 @@ const bodySchema = z.object({
   phone: z.string().optional().nullable(),
   birthday: z.string().optional().nullable(), // 'YYYY-MM-DD'
   notes: z.string().optional().nullable(),
+  /** Referral link: id of the client who brought this one in. */
+  indicadoPorId: z.string().optional().nullable(),
 });
 
+/** A referral must point at another client of the same business — a foreign
+ *  or self id silently becomes null instead of an error. */
+async function safeIndicadoPor(businessId: string, id: string | null | undefined, selfId?: string) {
+  if (!id || id === selfId) return null;
+  const ok = await prisma.client.findFirst({ where: { id, businessId }, select: { id: true } });
+  return ok ? id : null;
+}
+
 router.get('/', async (req: AuthedRequest, res) => {
-  const rows = await prisma.client.findMany({ where: { businessId: req.businessId }, orderBy: { name: 'asc' } });
-  res.json(rows);
+  const rows = await prisma.client.findMany({
+    where: { businessId: req.businessId },
+    orderBy: { name: 'asc' },
+    include: { indicadoPor: { select: { id: true, name: true } }, _count: { select: { indicados: true } } },
+  });
+  res.json(rows.map(({ _count, ...r }) => ({ ...r, indicadosCount: _count.indicados })));
 });
 
 router.post('/', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
-  const row = await prisma.client.create({ data: { businessId: req.businessId!, ...parsed.data } });
+  const { indicadoPorId, ...data } = parsed.data;
+  const row = await prisma.client.create({
+    data: { businessId: req.businessId!, ...data, indicadoPorId: await safeIndicadoPor(req.businessId!, indicadoPorId) },
+  });
   res.status(201).json(row);
 });
 
@@ -32,7 +49,11 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const existing = await prisma.client.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
-  const row = await prisma.client.update({ where: { id: existing.id }, data: parsed.data });
+  const { indicadoPorId, ...data } = parsed.data;
+  const row = await prisma.client.update({
+    where: { id: existing.id },
+    data: { ...data, indicadoPorId: await safeIndicadoPor(req.businessId!, indicadoPorId, existing.id) },
+  });
   res.json(row);
 });
 

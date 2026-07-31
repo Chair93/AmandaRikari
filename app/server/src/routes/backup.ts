@@ -87,6 +87,13 @@ router.post('/restore', async (req: AuthedRequest, res) => {
       const row = await tx.client.create({ data: { businessId, name: c.name, phone: c.phone || null, birthday: c.birthday || null, notes: c.notes || null } });
       cliIdMap.set(c.id, row.id);
     }
+    // Referral links point at other clients, so they only resolve after the
+    // whole list exists — second pass remaps them onto the new ids.
+    for (const c of d.clients || []) {
+      if (c.indicadoPorId && cliIdMap.has(c.indicadoPorId)) {
+        await tx.client.update({ where: { id: cliIdMap.get(c.id)! }, data: { indicadoPorId: cliIdMap.get(c.indicadoPorId)! } });
+      }
+    }
     const prodIdMap = new Map<string, string>();
     for (const p of d.products || []) {
       const row = await tx.product.create({

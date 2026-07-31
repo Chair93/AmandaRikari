@@ -110,6 +110,11 @@ model Client {
   phone      String?
   birthday   String? // 'YYYY-MM-DD'
   notes      String?
+  /// Referral: which client brought this one in. Kept as a plain link — the
+  /// ficha shows "indicada por" and how many people each client referred.
+  indicadoPorId String?
+  indicadoPor   Client?  @relation("Indicacao", fields: [indicadoPorId], references: [id], onDelete: SetNull)
+  indicados     Client[] @relation("Indicacao")
 
   transactions Transaction[]
   bills        Bill[]

@@ -34,6 +34,10 @@ export interface Client {
   phone: string | null;
   birthday: string | null;
   notes: string | null;
+  /** Referral: which client brought this one in (list endpoint fills these). */
+  indicadoPorId?: string | null;
+  indicadoPor?: { id: string; name: string } | null;
+  indicadosCount?: number;
 }
 
 export interface Product {
@@ -406,6 +410,9 @@ export interface ClientesData {
 
 export interface ClientDetailData {
   client: Client;
+  indicadoPor: { id: string; name: string } | null;
+  indicados: { id: string; name: string }[];
+  receitaIndicados: number;
   pago: number;
   aberto: number;
   visitas: number;
@@ -413,6 +420,12 @@ export interface ClientDetailData {
   bills: Bill[];
   history: TxSummary[];
   packages: PackageRow[];
+}
+
+export interface PrevisaoEstoque {
+  dias: number;
+  agendados: number;
+  rows: { productId: string; name: string; unit: string; estoque: number; estoqueUn: number; consumoUn: number; saldoUn: number; status: 'falta' | 'atencao' | 'ok' }[];
 }
 
 export interface HomeData {

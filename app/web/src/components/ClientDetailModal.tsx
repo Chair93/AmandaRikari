@@ -38,7 +38,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   const { data: fotos = [] } = useClientPhotos(clientId);
 
   if (!data) return null;
-  const { client, pago, aberto, visitas, ticketMedio, bills, history, packages } = data;
+  const { client, pago, aberto, visitas, ticketMedio, bills, history, packages, indicadoPor, indicados = [], receitaIndicados = 0 } = data;
 
 
   return (
@@ -50,6 +50,27 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
           <Stat label="Visitas" value={String(visitas)} />
           <Stat label="Ticket médio" value={fmtBRL(ticketMedio)} />
         </div>
+
+        {(indicadoPor || indicados.length > 0) && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6, background: 'var(--surface-2)', borderRadius: 12, padding: '10px 14px' }}>
+            {indicadoPor && (
+              <div>
+                💛 Indicada por <strong style={{ color: 'var(--text)' }}>{indicadoPor.name}</strong>
+              </div>
+            )}
+            {indicados.length > 0 && (
+              <div>
+                💛 Indicou <strong style={{ color: 'var(--text)' }}>{indicados.length === 1 ? '1 cliente' : `${indicados.length} clientes`}</strong> ({indicados.map((i) => i.name).join(', ')})
+                {receitaIndicados > 0 && (
+                  <>
+                    {' '}
+                    — que já trouxeram <strong style={{ color: 'var(--income-text)' }}>{fmtBRL(receitaIndicados)}</strong>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {isOwner && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

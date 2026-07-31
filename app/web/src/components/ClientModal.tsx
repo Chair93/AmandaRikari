@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
-import { useSaveClient } from '../api/hooks';
+import { useClients, useSaveClient } from '../api/hooks';
 import type { Client } from '../api/types';
 
 function maskBirthday(raw: string): string {
@@ -21,10 +21,12 @@ function isoToBirthday(iso: string | null): string {
 
 export default function ClientModal({ onClose, editingClient }: { onClose: () => void; editingClient?: Client | null }) {
   const saveClient = useSaveClient();
+  const { data: clients = [] } = useClients();
   const [name, setName] = useState(editingClient?.name || '');
   const [phone, setPhone] = useState(editingClient?.phone || '');
   const [birthday, setBirthday] = useState(isoToBirthday(editingClient?.birthday || null));
   const [notes, setNotes] = useState(editingClient?.notes || '');
+  const [indicadoPorId, setIndicadoPorId] = useState(editingClient?.indicadoPorId || '');
   const [error, setError] = useState<string | null>(null);
 
   async function onSave() {
@@ -33,7 +35,14 @@ export default function ClientModal({ onClose, editingClient }: { onClose: () =>
       return;
     }
     try {
-      await saveClient.mutateAsync({ id: editingClient?.id, name: name.trim(), phone: phone.trim() || null, birthday: birthdayToIso(birthday), notes: notes.trim() || null });
+      await saveClient.mutateAsync({
+        id: editingClient?.id,
+        name: name.trim(),
+        phone: phone.trim() || null,
+        birthday: birthdayToIso(birthday),
+        notes: notes.trim() || null,
+        indicadoPorId: indicadoPorId || null,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar');
@@ -53,6 +62,19 @@ export default function ClientModal({ onClose, editingClient }: { onClose: () =>
       <label className="field">
         Aniversário (opcional)
         <input className="input" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={birthday} onChange={(e) => setBirthday(maskBirthday(e.target.value))} />
+      </label>
+      <label className="field">
+        Quem indicou (opcional)
+        <select className="input" value={indicadoPorId} onChange={(e) => setIndicadoPorId(e.target.value)}>
+          <option value="">Ninguém / não sei</option>
+          {clients
+            .filter((c) => c.id !== editingClient?.id)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+        </select>
       </label>
       <label className="field">
         Observações (opcional)

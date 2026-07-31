@@ -7,6 +7,7 @@ import {
   useEquipmentBaixa,
   useEquipmentComprar,
   useEquipmentDeleteImpact,
+  usePrevisaoEstoque,
   useProductDeleteImpact,
   useProductEntrada,
   useProductInventario,
@@ -296,6 +297,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
 export default function Estoque() {
   const { data: products = [] } = useProducts();
   const { data: equipment = [] } = useEquipment();
+  const { data: previsao } = usePrevisaoEstoque();
   const { isOwner } = useAuth();
   const [modal, setModal] = useState<'product-op' | 'product-desc' | 'equipment' | null>(null);
 
@@ -341,6 +343,41 @@ export default function Estoque() {
               Comprar estoque não é prejuízo: o dinheiro sai do caixa e vira ativo aqui. O custo só entra no Resultado quando o produto é vendido ou usado num atendimento.
             </div>
           </div>
+
+          {previsao && previsao.agendados > 0 && previsao.rows.length > 0 && (
+            <div>
+              <div className="section-title">Previsão pela Agenda — próximos {previsao.dias} dias</div>
+              <div className="section-hint" style={{ marginBottom: 10 }}>
+                {previsao.agendados} atendimento{previsao.agendados === 1 ? '' : 's'} agendado{previsao.agendados === 1 ? '' : 's'} com serviço — o que a ficha técnica deles vai consumir, contra o
+                que há na prateleira.
+              </div>
+              <div className="list">
+                {previsao.rows.map((r) => (
+                  <div key={r.productId} className="list-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Tem {r.estoqueUn} {UNIT_LABEL[r.unit] || r.unit} · agenda vai usar {r.consumoUn} {UNIT_LABEL[r.unit] || r.unit}
+                      </div>
+                    </div>
+                    {r.status === 'falta' ? (
+                      <span className="badge" style={{ background: 'var(--expense-soft)', color: 'var(--expense-text)' }}>
+                        faltam {Math.abs(r.saldoUn)} {UNIT_LABEL[r.unit] || r.unit} — compre!
+                      </span>
+                    ) : r.status === 'atencao' ? (
+                      <span className="badge" style={{ background: 'var(--warning-soft)', color: 'var(--warning-text)' }}>
+                        vai ficar no limite ({r.saldoUn} {UNIT_LABEL[r.unit] || r.unit})
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ background: 'var(--income-soft)', color: 'var(--income-text)' }}>
+                        cobre ({r.saldoUn} {UNIT_LABEL[r.unit] || r.unit} sobrando)
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="section-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>

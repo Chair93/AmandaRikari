@@ -57,6 +57,44 @@ router.get('/home', async (req: AuthedRequest, res) => {
   });
 });
 
+router.get('/previsao-estoque', async (req: AuthedRequest, res) => {
+  const data = await loadAll(req.businessId!);
+  res.json(previsaoEstoque(data));
+});
+
+/** Cross the next N days of Agenda with each service's ficha técnica: what
+ *  the booked work will consume per product, against what's on the shelf.
+ *  Quantities in the product's own unit (stock is packages × packageQty). */
+export function previsaoEstoque(data: Awaited<ReturnType<typeof loadAll>>, dias = 30) {
+  const hoje = todayStr();
+  const limite = new Date(new Date(hoje + 'T00:00:00').getTime() + dias * 86400000).toISOString().slice(0, 10);
+  const svcById = new Map(data.services.map((s) => [s.id, s]));
+  const consumo = new Map<string, number>();
+  let agendados = 0;
+  for (const a of data.appointments) {
+    if (a.status !== 'confirmed' || !a.serviceId || a.date < hoje || a.date > limite) continue;
+    const sv = svcById.get(a.serviceId);
+    if (!sv) continue;
+    agendados++;
+    for (const it of sv.items) {
+      if (it.kind === 'product' && it.productId) consumo.set(it.productId, (consumo.get(it.productId) || 0) + it.qty);
+    }
+  }
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const rows = [...consumo.entries()]
+    .flatMap(([pid, consumoUn]) => {
+      const p = data.products.find((x) => x.id === pid);
+      if (!p) return [];
+      const estoqueUn = numOr0(p.stock) * numOr0(p.packageQty);
+      const saldoUn = r2(estoqueUn - consumoUn);
+      const saldoPacotes = numOr0(p.packageQty) > 0 ? saldoUn / p.packageQty : 0;
+      const status = saldoUn < -0.005 ? 'falta' : saldoPacotes <= numOr0((p as { lowStockAt?: number }).lowStockAt ?? 1) ? 'atencao' : 'ok';
+      return [{ productId: pid, name: p.name, unit: p.unit, estoque: r2(numOr0(p.stock)), estoqueUn: r2(estoqueUn), consumoUn: r2(consumoUn), saldoUn, status }];
+    })
+    .sort((a, b) => a.saldoUn - b.saldoUn);
+  return { dias, agendados, rows };
+}
+
 export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
   const hoje = todayStr();
   const alerts: { id: string; kind: string; text: string; overdue: boolean; phone?: string | null; clientName?: string }[] = [];
@@ -111,6 +149,12 @@ export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
     .filter((p) => numOr0(p.stock) <= numOr0((p as { lowStockAt?: number }).lowStockAt ?? 1))
     .slice(0, 4)
     .forEach((p) => alerts.push({ id: 'e' + p.id, kind: 'stock', overdue: false, text: `Estoque baixo: ${p.name} (${numOr0(p.stock)} un)` }));
+  // Booked-but-not-buyable: the agenda's next 30 days consume more of a
+  // product than the shelf holds — warn before the client is in the chair.
+  previsaoEstoque(data)
+    .rows.filter((r) => r.status === 'falta')
+    .slice(0, 4)
+    .forEach((r) => alerts.push({ id: 'prev' + r.productId, kind: 'stock', overdue: false, text: `Agenda dos próximos 30 dias precisa de ${r.consumoUn} ${r.unit} de ${r.name} — estoque cobre só ${r.estoqueUn} ${r.unit}. Compre antes!` }));
   data.products
     .filter((p) => p.expiresAt && daysBetween(hoje, p.expiresAt) <= 30)
     .slice(0, 4)
@@ -475,9 +519,18 @@ router.get('/clients/:id', async (req: AuthedRequest, res) => {
   const bills = data.bills.filter((b) => b.clientId === client.id);
   const aberto = bills.filter((b) => !b.settled && b.kind === 'receber').reduce((a, b) => a + b.amount, 0);
   const packages = await prisma.package.findMany({ where: { businessId, clientId: client.id }, orderBy: { date: 'desc' } });
+  // Referral picture: who brought her in, whom she brought, and how much
+  // cash those referrals actually generated.
+  const indicadoPor = client.indicadoPorId ? await prisma.client.findFirst({ where: { id: client.indicadoPorId, businessId }, select: { id: true, name: true } }) : null;
+  const indicadosRows = await prisma.client.findMany({ where: { businessId, indicadoPorId: client.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
+  const indicadosIds = new Set(indicadosRows.map((c) => c.id));
+  const receitaIndicados = data.transactions.filter((t) => t.clientId && indicadosIds.has(t.clientId) && t.type === 'receita').reduce((a, t) => a + cashDelta(t), 0);
 
   res.json({
     client,
+    indicadoPor,
+    indicados: indicadosRows,
+    receitaIndicados,
     pago,
     aberto,
     visitas: visitasCount,
