@@ -9,12 +9,39 @@ router.use(requireOwnerForWrites);
 
 const bodySchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['receita', 'despesa']),
+  type: z.enum(['receita', 'despesa', 'servico']),
   investment: z.boolean().optional(),
 });
 
+/** Starter set of service categories — becomes editable rows on first load
+ *  (they used to be hardcoded suggestions in the service form). */
+const SERVICO_DEFAULTS = [
+  'Limpeza de pele',
+  'Peeling',
+  'Microagulhamento',
+  'Drenagem linfática',
+  'Radiofrequência estética',
+  'Criolipólise',
+  'Depilação a laser',
+  'Toxina botulínica',
+  'Preenchimento facial',
+  'Bioestimulador de colágeno',
+  'Laser facial',
+  'Massagem estética',
+  'Harmonização facial',
+];
+
 router.get('/', async (req: AuthedRequest, res) => {
-  const rows = await prisma.category.findMany({ where: { businessId: req.businessId }, orderBy: { name: 'asc' } });
+  const businessId = req.businessId!;
+  // One-time self-seed: service categories become manageable rows, including
+  // any names already typed into existing services.
+  const hasServico = await prisma.category.findFirst({ where: { businessId, type: 'servico' }, select: { id: true } });
+  if (!hasServico) {
+    const usados = await prisma.service.findMany({ where: { businessId, category: { not: null } }, select: { category: true } });
+    const nomes = [...new Set([...SERVICO_DEFAULTS, ...usados.map((s) => s.category!.trim()).filter(Boolean)])];
+    await prisma.category.createMany({ data: nomes.map((name) => ({ businessId, name, type: 'servico' })) });
+  }
+  const rows = await prisma.category.findMany({ where: { businessId }, orderBy: { name: 'asc' } });
   res.json(rows);
 });
 
@@ -38,6 +65,11 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     where: { id: existing.id },
     data: { name, type, investment: type === 'despesa' ? !!investment : false },
   });
+  // Services store the category by name — a rename follows through so they
+  // don't get orphaned under the old label.
+  if (existing.type === 'servico' && existing.name !== name) {
+    await prisma.service.updateMany({ where: { businessId: req.businessId!, category: existing.name }, data: { category: name } });
+  }
   res.json(row);
 });
 

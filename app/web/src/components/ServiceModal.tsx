@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Modal from './Modal';
-import { useEquipment, useProducts, useResultadoReport, useSaveService, useSettings } from '../api/hooks';
+import { useCategories, useEquipment, useProducts, useResultadoReport, useSaveService, useSettings } from '../api/hooks';
 import type { Service } from '../api/types';
 import { fmtBRL, numOr0, UNIT_LABEL } from '../format';
 import { computeServiceCostPreview } from '../calcPreview';
@@ -14,26 +14,11 @@ interface ItemRow {
 let seq = 0;
 const nextId = () => 'svcitem_' + ++seq;
 
-const CATEGORY_SUGGESTIONS = [
-  'Limpeza de pele',
-  'Peeling',
-  'Microagulhamento',
-  'Drenagem linfática',
-  'Radiofrequência estética',
-  'Criolipólise',
-  'Depilação a laser',
-  'Toxina botulínica',
-  'Preenchimento facial',
-  'Bioestimulador de colágeno',
-  'Laser facial',
-  'Massagem estética',
-  'Harmonização facial',
-  'Hidratação facial',
-];
-
 export default function ServiceModal({ onClose, editingService }: { onClose: () => void; editingService?: Service | null }) {
   const { data: products = [] } = useProducts();
   const { data: equipment = [] } = useEquipment();
+  // Managed in the Categorias tab (type 'servico') — create/rename/expand there.
+  const { data: categories = [] } = useCategories();
   const { data: settings } = useSettings();
   const { data: resultado } = useResultadoReport('month', 0, 0);
   const saveService = useSaveService();
@@ -100,12 +85,20 @@ export default function ServiceModal({ onClose, editingService }: { onClose: () 
         </label>
         <label className="field">
           Categoria (opcional)
-          <input className="input" list="service-category-suggestions" placeholder="Ex: Limpeza de pele" value={category} onChange={(e) => setCategory(e.target.value)} />
-          <datalist id="service-category-suggestions">
-            {CATEGORY_SUGGESTIONS.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
+          <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Sem categoria</option>
+            {/* An old free-typed name that isn't in the managed list anymore
+                still shows, so editing doesn't silently drop it. */}
+            {category && !categories.some((c) => c.type === 'servico' && c.name === category) && <option value={category}>{category}</option>}
+            {categories
+              .filter((c) => c.type === 'servico')
+              .map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+          <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>Pra criar ou renomear categorias, use a aba Categorias.</span>
         </label>
       </div>
       <label className="field">

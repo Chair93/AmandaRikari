@@ -24,7 +24,8 @@ export interface TeamMember {
 export interface Category {
   id: string;
   name: string;
-  type: TxType;
+  /** 'receita' | 'despesa' organize o Caixa; 'servico' organiza o catálogo. */
+  type: TxType | 'servico';
   investment: boolean;
 }
 

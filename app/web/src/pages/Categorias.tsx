@@ -7,7 +7,7 @@ import type { Category } from '../api/types';
 
 function CategoryModal({ onClose, editingCategory }: { onClose: () => void; editingCategory?: Category | null }) {
   const saveCategory = useSaveCategory();
-  const [type, setType] = useState<'receita' | 'despesa'>(editingCategory?.type || 'despesa');
+  const [type, setType] = useState<'receita' | 'despesa' | 'servico'>(editingCategory?.type || 'despesa');
   const [name, setName] = useState(editingCategory?.name || '');
   const [investment, setInvestment] = useState(!!editingCategory?.investment);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,15 @@ function CategoryModal({ onClose, editingCategory }: { onClose: () => void; edit
         <button className={'tab' + (type === 'receita' ? ' active-income' : '')} onClick={() => setType('receita')}>
           Receita
         </button>
+        <button className={'tab' + (type === 'servico' ? ' active-accent' : '')} onClick={() => setType('servico')}>
+          Serviço
+        </button>
       </div>
+      {type === 'servico' && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Categorias de serviço organizam o catálogo (Peeling, Limpeza de pele...). Renomear aqui atualiza os serviços que já usam o nome.
+        </div>
+      )}
       {type === 'despesa' && (
         <button
           onClick={() => setInvestment((v) => !v)}
@@ -88,6 +96,7 @@ export default function Categorias() {
 
   const despesas = categories.filter((c) => c.type === 'despesa');
   const receitas = categories.filter((c) => c.type === 'receita');
+  const servicos = categories.filter((c) => c.type === 'servico');
 
   function onDelete(c: Category) {
     if (!window.confirm(`Remover a categoria "${c.name}"?`)) return;
@@ -137,6 +146,27 @@ export default function Categorias() {
               {receitas.map((c) => (
                 <div className="list-row" key={c.id}>
                   <span style={{ width: 9, height: 9, borderRadius: 999, background: 'oklch(50% 0.08 150)', flex: 'none' }} />
+                  <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{c.name}</span>
+                  {isOwner && (
+                    <div className="row-actions">
+                      <button className="pill ghost sm" onClick={() => setModal({ open: true, editing: c })}>
+                        Editar
+                      </button>
+                      <button className="icon-btn" aria-label="Excluir categoria" onClick={() => onDelete(c)}>
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: 'var(--accent-text)' }}>Serviços (catálogo)</div>
+            <div className="list">
+              {servicos.map((c) => (
+                <div className="list-row" key={c.id}>
+                  <span style={{ width: 9, height: 9, borderRadius: 999, background: 'var(--accent)', flex: 'none' }} />
                   <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{c.name}</span>
                   {isOwner && (
                     <div className="row-actions">

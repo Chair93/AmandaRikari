@@ -42,7 +42,7 @@ export function useCategories() {
 export function useSaveCategory() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; type: 'receita' | 'despesa'; investment?: boolean }) =>
+    mutationFn: (input: { id?: string; name: string; type: 'receita' | 'despesa' | 'servico'; investment?: boolean }) =>
       input.id ? api.put<Category>(`/categories/${input.id}`, input) : api.post<Category>('/categories', input),
     onSuccess: invalidate,
   });
