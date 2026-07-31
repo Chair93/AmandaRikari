@@ -3,7 +3,7 @@
    rosé identity moves from wallpaper to accents. (The phone theme overrides
    all of this inside its own media block — untouched on purpose.) */
 :root {
-  --bg: oklch(97.2% 0.007 40);
+  --bg: oklch(97.4% 0.007 10);
   --surface: oklch(99.6% 0.002 40);
   --surface-2: oklch(94.5% 0.011 32);
   --border: oklch(89.5% 0.013 35);
@@ -13,12 +13,12 @@
   --text-muted: oklch(46% 0.022 30);
   --text-soft: oklch(56% 0.02 30);
 
-  --accent: oklch(57% 0.115 26);
-  --accent-2: oklch(52% 0.12 28);
-  --accent-dark: oklch(48% 0.115 28);
-  --accent-text: oklch(49% 0.105 28);
-  --accent-soft: oklch(58% 0.11 22 / 0.13);
-  --accent-soft-strong: oklch(58% 0.11 22 / 0.2);
+  --accent: oklch(62% 0.155 4);
+  --accent-2: oklch(56% 0.15 6);
+  --accent-dark: oklch(54% 0.15 6);
+  --accent-text: oklch(52% 0.14 6);
+  --accent-soft: oklch(64% 0.15 4 / 0.13);
+  --accent-soft-strong: oklch(64% 0.15 4 / 0.2);
 
   --income: oklch(46% 0.1 150);
   --income-text: oklch(39% 0.1 150);
@@ -29,8 +29,8 @@
   --warning-text: oklch(43% 0.1 55);
   --warning-soft: oklch(64% 0.09 55 / 0.15);
 
-  --active-bg: oklch(58% 0.11 22 / 0.15);
-  --active-color: oklch(49% 0.105 28);
+  --active-bg: oklch(64% 0.15 4 / 0.15);
+  --active-color: oklch(52% 0.14 6);
   --idle-color: oklch(50% 0.022 30);
 
   --banner-amber-bg: oklch(97% 0.025 60 / 0.6);
@@ -49,7 +49,7 @@
   --radius-md: 8px;
   --radius-sm: 6px;
   --shadow-card: 0 1px 2px oklch(35% 0.03 35 / 0.08), 0 2px 8px oklch(45% 0.03 35 / 0.05);
-  --shadow-hero: 0 10px 28px oklch(52% 0.11 24 / 0.3);
+  --shadow-hero: 0 10px 28px oklch(58% 0.15 5 / 0.3);
   --shadow-modal: 0 24px 64px oklch(25% 0.04 30 / 0.32);
 
   color-scheme: light;
@@ -67,12 +67,12 @@
     --text-muted: oklch(72% 0.017 30);
     --text-soft: oklch(63% 0.017 30);
 
-    --accent: oklch(70% 0.115 30);
-    --accent-2: oklch(60% 0.1 28);
-    --accent-dark: oklch(60% 0.1 30);
-    --accent-text: oklch(78% 0.1 32);
-    --accent-soft: oklch(62% 0.12 24 / 0.22);
-    --accent-soft-strong: oklch(62% 0.12 24 / 0.3);
+    --accent: oklch(73% 0.14 6);
+    --accent-2: oklch(64% 0.13 8);
+    --accent-dark: oklch(64% 0.13 8);
+    --accent-text: oklch(80% 0.12 6);
+    --accent-soft: oklch(66% 0.14 6 / 0.22);
+    --accent-soft-strong: oklch(66% 0.14 6 / 0.3);
 
     --income: oklch(68% 0.13 150);
     --income-text: oklch(76% 0.14 150);
@@ -83,8 +83,8 @@
     --warning-text: oklch(80% 0.11 65);
     --warning-soft: oklch(70% 0.11 60 / 0.22);
 
-    --active-bg: oklch(62% 0.12 24 / 0.26);
-    --active-color: oklch(80% 0.1 32);
+    --active-bg: oklch(66% 0.14 6 / 0.26);
+    --active-color: oklch(82% 0.12 6);
     --idle-color: oklch(78% 0.016 30);
 
     --banner-amber-bg: oklch(42% 0.06 60 / 0.3);
@@ -116,12 +116,12 @@
   --text-muted: oklch(72% 0.017 30);
   --text-soft: oklch(63% 0.017 30);
 
-  --accent: oklch(70% 0.115 30);
-  --accent-2: oklch(60% 0.1 28);
-  --accent-dark: oklch(74% 0.1 32);
-  --accent-text: oklch(78% 0.1 32);
-  --accent-soft: oklch(62% 0.12 24 / 0.22);
-  --accent-soft-strong: oklch(62% 0.12 24 / 0.3);
+  --accent: oklch(73% 0.14 6);
+  --accent-2: oklch(64% 0.13 8);
+  --accent-dark: oklch(78% 0.12 6);
+  --accent-text: oklch(80% 0.12 6);
+  --accent-soft: oklch(66% 0.14 6 / 0.22);
+  --accent-soft-strong: oklch(66% 0.14 6 / 0.3);
 
   --income: oklch(68% 0.13 150);
   --income-text: oklch(76% 0.14 150);
@@ -132,8 +132,8 @@
   --warning-text: oklch(80% 0.11 65);
   --warning-soft: oklch(70% 0.11 60 / 0.22);
 
-  --active-bg: oklch(62% 0.12 24 / 0.26);
-  --active-color: oklch(80% 0.1 32);
+  --active-bg: oklch(66% 0.14 6 / 0.26);
+  --active-color: oklch(82% 0.12 6);
   --idle-color: oklch(78% 0.016 30);
 
   --banner-amber-bg: oklch(42% 0.06 60 / 0.3);
