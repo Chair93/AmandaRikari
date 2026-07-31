@@ -13,12 +13,13 @@
   --text-muted: oklch(46% 0.022 30);
   --text-soft: oklch(56% 0.02 30);
 
-  --accent: oklch(67% 0.115 4);
-  --accent-2: oklch(61% 0.115 7);
-  --accent-dark: oklch(60% 0.12 6);
-  --accent-text: oklch(55% 0.13 6);
-  --accent-soft: oklch(72% 0.1 4 / 0.15);
-  --accent-soft-strong: oklch(72% 0.1 4 / 0.22);
+  --accent: oklch(84% 0.075 4);
+  --accent-2: oklch(78% 0.085 8);
+  --accent-dark: oklch(78% 0.09 6);
+  --on-accent: oklch(40% 0.115 8);
+  --accent-text: oklch(52% 0.13 6);
+  --accent-soft: oklch(85% 0.07 4 / 0.35);
+  --accent-soft-strong: oklch(85% 0.07 4 / 0.5);
 
   --income: oklch(46% 0.1 150);
   --income-text: oklch(39% 0.1 150);
@@ -29,8 +30,8 @@
   --warning-text: oklch(43% 0.1 55);
   --warning-soft: oklch(64% 0.09 55 / 0.15);
 
-  --active-bg: oklch(72% 0.1 4 / 0.17);
-  --active-color: oklch(54% 0.13 6);
+  --active-bg: oklch(85% 0.07 4 / 0.4);
+  --active-color: oklch(48% 0.13 8);
   --idle-color: oklch(50% 0.022 30);
 
   --banner-amber-bg: oklch(97% 0.025 60 / 0.6);
@@ -49,7 +50,7 @@
   --radius-md: 8px;
   --radius-sm: 6px;
   --shadow-card: 0 1px 2px oklch(35% 0.03 35 / 0.08), 0 2px 8px oklch(45% 0.03 35 / 0.05);
-  --shadow-hero: 0 10px 28px oklch(68% 0.1 5 / 0.3);
+  --shadow-hero: 0 10px 28px oklch(75% 0.08 5 / 0.35);
   --shadow-modal: 0 24px 64px oklch(25% 0.04 30 / 0.32);
 
   color-scheme: light;
@@ -67,12 +68,13 @@
     --text-muted: oklch(72% 0.017 30);
     --text-soft: oklch(63% 0.017 30);
 
-    --accent: oklch(76% 0.1 5);
-    --accent-2: oklch(68% 0.1 8);
-    --accent-dark: oklch(68% 0.1 8);
-    --accent-text: oklch(84% 0.08 6);
-    --accent-soft: oklch(74% 0.09 6 / 0.2);
-    --accent-soft-strong: oklch(74% 0.09 6 / 0.28);
+    --accent: oklch(82% 0.08 4);
+    --accent-2: oklch(74% 0.085 8);
+    --accent-dark: oklch(86% 0.07 4);
+    --on-accent: oklch(25% 0.05 10);
+    --accent-text: oklch(85% 0.075 6);
+    --accent-soft: oklch(80% 0.075 6 / 0.22);
+    --accent-soft-strong: oklch(80% 0.075 6 / 0.32);
 
     --income: oklch(68% 0.13 150);
     --income-text: oklch(76% 0.14 150);
@@ -83,8 +85,8 @@
     --warning-text: oklch(80% 0.11 65);
     --warning-soft: oklch(70% 0.11 60 / 0.22);
 
-    --active-bg: oklch(74% 0.09 6 / 0.24);
-    --active-color: oklch(86% 0.08 6);
+    --active-bg: oklch(80% 0.075 6 / 0.26);
+    --active-color: oklch(88% 0.06 6);
     --idle-color: oklch(78% 0.016 30);
 
     --banner-amber-bg: oklch(42% 0.06 60 / 0.3);
@@ -116,12 +118,13 @@
   --text-muted: oklch(72% 0.017 30);
   --text-soft: oklch(63% 0.017 30);
 
-  --accent: oklch(76% 0.1 5);
-  --accent-2: oklch(68% 0.1 8);
-  --accent-dark: oklch(80% 0.09 6);
-  --accent-text: oklch(84% 0.08 6);
-  --accent-soft: oklch(74% 0.09 6 / 0.2);
-  --accent-soft-strong: oklch(74% 0.09 6 / 0.28);
+  --accent: oklch(82% 0.08 4);
+  --accent-2: oklch(74% 0.085 8);
+  --accent-dark: oklch(86% 0.07 4);
+  --on-accent: oklch(25% 0.05 10);
+  --accent-text: oklch(85% 0.075 6);
+  --accent-soft: oklch(80% 0.075 6 / 0.22);
+  --accent-soft-strong: oklch(80% 0.075 6 / 0.32);
 
   --income: oklch(68% 0.13 150);
   --income-text: oklch(76% 0.14 150);
@@ -132,8 +135,8 @@
   --warning-text: oklch(80% 0.11 65);
   --warning-soft: oklch(70% 0.11 60 / 0.22);
 
-  --active-bg: oklch(74% 0.09 6 / 0.24);
-  --active-color: oklch(86% 0.08 6);
+  --active-bg: oklch(80% 0.075 6 / 0.26);
+  --active-color: oklch(88% 0.06 6);
   --idle-color: oklch(78% 0.016 30);
 
   --banner-amber-bg: oklch(42% 0.06 60 / 0.3);
@@ -216,7 +219,7 @@ button {
 /* Keyboard focus is a first-class state, like in any real app. :where keeps
    specificity at zero so components with their own focus styling still win. */
 :where(button, a, [role='button']):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -393,7 +396,7 @@ a {
 .pill.active {
   background: var(--accent-soft-strong);
   color: var(--active-color);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--active-color);
   font-weight: 700;
 }
 /* Colored variants of the selected state (e.g. the Receitas/Despesas filter
@@ -464,7 +467,7 @@ a {
   font-size: 13px;
   font-weight: 600;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent, white);
   text-align: center;
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
@@ -555,7 +558,7 @@ a {
   height: 56px;
   border-radius: 999px;
   background: var(--accent);
-  color: white;
+  color: var(--on-accent, white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -586,7 +589,7 @@ a {
   padding: 30px 32px;
   box-shadow: var(--shadow-hero);
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white;
+  color: var(--on-accent, white);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -796,7 +799,7 @@ textarea.input {
 }
 .input:focus,
 select.input:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -1px;
 }
 
@@ -832,7 +835,7 @@ select.input:focus {
 .tab.active-accent {
   background: var(--accent-soft-strong);
   color: var(--active-color);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--active-color);
   font-weight: 700;
 }
 
@@ -957,7 +960,7 @@ select.input:focus {
 }
 .action-card.primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white;
+  color: var(--on-accent, white);
   border: none;
   box-shadow: var(--shadow-hero);
 }
@@ -971,7 +974,7 @@ select.input:focus {
   color: var(--text-muted);
 }
 .action-card.primary .desc {
-  color: white;
+  color: var(--on-accent, white);
   opacity: 0.85;
 }
 
@@ -1276,6 +1279,7 @@ select.input:focus {
     --accent: #b0475f;
     --accent-2: #9c3d54;
     --accent-dark: #963a50;
+    --on-accent: #fff;
     --accent-text: #b0475f;
     --accent-soft: #fbe9ed;
     --accent-soft-strong: #f7dbe2;
@@ -1315,6 +1319,7 @@ select.input:focus {
       --accent: #c2a878;         /* brass — the only brand thread at night */
       --accent-2: #ab9264;
       --accent-dark: #d4bc8e;
+      --on-accent: #fff;
       --accent-text: #c2a878;
       --accent-soft: rgb(194 168 120 / 0.16);
       --accent-soft-strong: rgb(194 168 120 / 0.24);
@@ -1350,6 +1355,7 @@ select.input:focus {
     --accent: #c2a878;
     --accent-2: #ab9264;
     --accent-dark: #d4bc8e;
+    --on-accent: #fff;
     --accent-text: #c2a878;
     --accent-soft: rgb(194 168 120 / 0.16);
     --accent-soft-strong: rgb(194 168 120 / 0.24);
@@ -1844,7 +1850,7 @@ select.input:focus {
     border-color: var(--border-strong);
   }
   .nav-collapse:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-text);
     outline-offset: 2px;
   }
 

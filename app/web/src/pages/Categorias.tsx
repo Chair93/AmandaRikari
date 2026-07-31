@@ -51,7 +51,7 @@ function CategoryModal({ onClose, editingCategory }: { onClose: () => void; edit
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
+              color: 'var(--on-accent, white)',
               fontSize: 12,
               fontWeight: 700,
             }}

@@ -85,7 +85,7 @@ function EstoqueRow({ p }: { p: Product }) {
           <button className="pill sm" onClick={() => setPrompt('entrada')}>
             + Entrada
           </button>
-          <button className="pill sm accent" style={{ color: 'white', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
+          <button className="pill sm accent" style={{ color: 'var(--on-accent, white)', background: 'var(--accent)' }} onClick={() => setPrompt('venda')} disabled={p.stock <= 0}>
             Vender
           </button>
           <button className="pill ghost sm" onClick={() => setPrompt('contagem')}>

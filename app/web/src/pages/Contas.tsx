@@ -273,7 +273,7 @@ export default function Contas() {
           </div>
 
           {data && (
-            <div style={{ borderRadius: 22, padding: '26px 30px', background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', color: 'white', boxShadow: 'var(--shadow-hero)', display: 'flex', flexWrap: 'wrap', gap: 34 }}>
+            <div style={{ borderRadius: 22, padding: '26px 30px', background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', color: 'var(--on-accent, white)', boxShadow: 'var(--shadow-hero)', display: 'flex', flexWrap: 'wrap', gap: 34 }}>
               <div>
                 <div style={{ fontSize: 11.5, opacity: 0.85, marginBottom: 3 }}>A receber (em aberto)</div>
                 <div className="serif" style={{ fontSize: 30, fontWeight: 600 }}>

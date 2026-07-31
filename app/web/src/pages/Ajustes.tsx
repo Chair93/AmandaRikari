@@ -723,7 +723,7 @@ function SettingsCard({ settings }: { settings: Settings }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: 'var(--on-accent, white)',
             fontSize: 12,
             fontWeight: 700,
           }}
@@ -749,7 +749,7 @@ function SettingsCard({ settings }: { settings: Settings }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: 'var(--on-accent, white)',
             fontSize: 12,
             fontWeight: 700,
           }}

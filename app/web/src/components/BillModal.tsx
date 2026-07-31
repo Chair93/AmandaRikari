@@ -126,7 +126,7 @@ export default function BillModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: 'var(--on-accent, white)',
             fontSize: 12,
             fontWeight: 700,
           }}

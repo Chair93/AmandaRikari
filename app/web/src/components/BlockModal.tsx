@@ -57,7 +57,7 @@ export default function BlockModal({ onClose, defaultDate }: { onClose: () => vo
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: 'var(--on-accent, white)',
             fontSize: 12,
             fontWeight: 700,
           }}

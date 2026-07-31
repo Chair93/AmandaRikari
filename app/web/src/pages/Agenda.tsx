@@ -168,8 +168,8 @@ export default function Agenda() {
                       padding: '10px 4px',
                       cursor: 'pointer',
                       background: isSelected ? 'var(--accent)' : 'var(--surface)',
-                      color: isSelected ? 'white' : 'var(--text)',
-                      border: isToday && !isSelected ? '1.5px solid var(--accent)' : undefined,
+                      color: isSelected ? 'var(--on-accent, white)' : 'var(--text)',
+                      border: isToday && !isSelected ? '1.5px solid var(--accent-text)' : undefined,
                     }}
                   >
                     <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', opacity: 0.75 }}>{WEEKDAY_SHORT[new Date(d + 'T00:00:00').getDay()]}</span>
@@ -182,7 +182,7 @@ export default function Agenda() {
                           padding: '1px 6px',
                           borderRadius: 999,
                           background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--accent-soft, var(--income-soft))',
-                          color: isSelected ? 'white' : 'var(--accent-text, var(--income-text))',
+                          color: isSelected ? 'var(--on-accent, white)' : 'var(--accent-text, var(--income-text))',
                         }}
                       >
                         {count}
@@ -222,9 +222,9 @@ export default function Agenda() {
                         gap: 2,
                         padding: '4px 0',
                         background: isSelected ? 'var(--accent)' : 'transparent',
-                        color: isSelected ? 'white' : foraDoMes ? 'var(--text-soft, var(--text-muted))' : 'var(--text)',
+                        color: isSelected ? 'var(--on-accent, white)' : foraDoMes ? 'var(--text-soft, var(--text-muted))' : 'var(--text)',
                         opacity: foraDoMes && !isSelected ? 0.45 : 1,
-                        border: isToday && !isSelected ? '1.5px solid var(--accent)' : '1.5px solid transparent',
+                        border: isToday && !isSelected ? '1.5px solid var(--accent-text)' : '1.5px solid transparent',
                       }}
                     >
                       <span style={{ fontSize: 13.5, fontWeight: isSelected || isToday ? 700 : 500 }}>{Number(d.slice(8, 10))}</span>
@@ -236,7 +236,7 @@ export default function Agenda() {
                             padding: '0 5px',
                             borderRadius: 999,
                             background: isSelected ? 'rgba(255,255,255,0.28)' : 'var(--accent-soft)',
-                            color: isSelected ? 'white' : 'var(--accent-text)',
+                            color: isSelected ? 'var(--on-accent, white)' : 'var(--accent-text)',
                           }}
                         >
                           {count}

@@ -123,7 +123,7 @@ export default function Dashboard() {
                   {isOwner && (
                     <button
                       onClick={() => setProlaboreOpen(true)}
-                      style={{ all: 'unset', cursor: 'pointer', marginTop: 12, alignSelf: 'flex-start', padding: '9px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, background: 'rgba(255,255,255,0.18)', color: 'white' }}
+                      style={{ all: 'unset', cursor: 'pointer', marginTop: 12, alignSelf: 'flex-start', padding: '9px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, background: 'rgba(255,255,255,0.18)', color: 'var(--on-accent, white)' }}
                     >
                       Retirar pró-labore — você confirma o valor
                     </button>
