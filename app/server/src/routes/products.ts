@@ -122,6 +122,47 @@ router.post('/:id/entrada', async (req: AuthedRequest, res) => {
   res.json(updated);
 });
 
+/** "Débito posterior": the supplier ended up charging more than the entrada
+ *  recorded. The difference spreads over the CURRENT stock, correcting the
+ *  weighted average cost; optionally the extra payment also leaves the caixa. */
+const diferencaSchema = z.object({ valor: z.number().gt(0), lancarNoCaixa: z.boolean().optional() });
+router.post('/:id/diferenca-custo', async (req: AuthedRequest, res) => {
+  const parsed = diferencaSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  const p = await prisma.product.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!p) return res.status(404).json({ error: 'not_found' });
+  if (p.stock <= 0.005) return res.status(400).json({ error: 'Sem estoque pra ratear — lance a diferença como despesa avulsa em Lançamentos (categoria Compra de estoque).' });
+  const { valor, lancarNoCaixa } = parsed.data;
+  const custoMedioAtual = p.avgCost || p.packageCost;
+  const novoCustoMedio = custoMedioAtual + valor / p.stock;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const prod = await tx.product.update({
+      where: { id: p.id },
+      // packageCost follows so the "R$ X / pacote" display reflects the real price paid.
+      data: { avgCost: novoCustoMedio, packageCost: novoCustoMedio },
+    });
+    if (lancarNoCaixa) {
+      let cat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Compra de estoque' } });
+      if (!cat) cat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Compra de estoque', type: 'despesa', investment: true } });
+      await tx.transaction.create({
+        data: {
+          businessId: req.businessId!,
+          type: 'despesa',
+          amount: valor,
+          categoryId: cat.id,
+          date: new Date().toISOString().slice(0, 10),
+          estoque: true,
+          productId: p.id,
+          note: `Diferença de custo: ${p.name}`,
+        },
+      });
+    }
+    return prod;
+  });
+  res.json(updated);
+});
+
 /** Estoque "Vender" — sells stock directly (not tied to an appointment), records revenue + margin. */
 const venderSchema = z.object({ qty: z.number().gt(0), unitPrice: z.number().gt(0) });
 router.post('/:id/vender', async (req: AuthedRequest, res) => {

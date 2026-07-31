@@ -95,6 +95,13 @@ export function useProductDeleteImpact(id: string | null) {
     enabled: !!id,
   });
 }
+export function useProductDiferencaCusto() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (input: { id: string; valor: number; lancarNoCaixa?: boolean }) => api.post(`/products/${input.id}/diferenca-custo`, input),
+    onSuccess: invalidate,
+  });
+}
 export function useProductEntrada() {
   const invalidate = useInvalidateAll();
   return useMutation({

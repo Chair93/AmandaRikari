@@ -9,6 +9,7 @@ import {
   useEquipmentDeleteImpact,
   usePrevisaoEstoque,
   useProductDeleteImpact,
+  useProductDiferencaCusto,
   useProductEntrada,
   useProductInventario,
   useProducts,
@@ -47,11 +48,12 @@ function EstoqueRow({ p }: { p: Product }) {
   const entrada = useProductEntrada();
   const vender = useProductVender();
   const inventario = useProductInventario();
+  const diferenca = useProductDiferencaCusto();
   const del = useDeleteProduct();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: impact, isPending: impactPending } = useProductDeleteImpact(confirmDelete ? p.id : null);
-  const [prompt, setPrompt] = useState<'entrada' | 'venda' | 'contagem' | null>(null);
+  const [prompt, setPrompt] = useState<'entrada' | 'venda' | 'contagem' | 'diferenca' | null>(null);
   const custo = p.avgCost || p.packageCost;
   const valor = p.stock * p.packageCost;
   const margemUnit = p.salePrice - custo;
@@ -91,6 +93,9 @@ function EstoqueRow({ p }: { p: Product }) {
           </button>
           <button className="pill ghost sm" onClick={() => setPrompt('contagem')}>
             Contagem
+          </button>
+          <button className="pill ghost sm" onClick={() => setPrompt('diferenca')} disabled={p.stock <= 0.005}>
+            Dif. de custo
           </button>
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             editar
@@ -147,6 +152,22 @@ function EstoqueRow({ p }: { p: Product }) {
           onCancel={() => setPrompt(null)}
           onConfirm={async (v) => {
             await inventario.mutateAsync({ id: p.id, real: v.real as number, note: (v.note as string) || undefined });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'diferenca' && (
+        <PromptModal
+          title={`Lançar diferença de custo — ${p.name}`}
+          description={`Pagou mais do que foi lançado na entrada? Digite a diferença total (R$). Ela é rateada pelos ${fmtUn(p.stock)} pacotes em estoque e o custo médio é corrigido na hora — hoje está em ${fmtBRL(custo)} por pacote.`}
+          fields={[{ key: 'valor', label: 'Diferença paga a mais (R$)', kind: 'money' }]}
+          checkboxLabel="Lançar também como saída no caixa (pagamento da diferença)"
+          checkboxDefault
+          confirmLabel="Corrigir custo"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v, lancarNoCaixa) => {
+            await diferenca.mutateAsync({ id: p.id, valor: v.valor as number, lancarNoCaixa });
             setPrompt(null);
           }}
         />
