@@ -4,6 +4,9 @@ import { useClients, useDeleteAppointment, useSaveAppointment, useServices } fro
 import type { Appointment } from '../api/types';
 import { fmtBRL, numOr0 } from '../format';
 
+/** Accent-insensitive matcher so "radio" finds "Radiofrequência". */
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 export default function AppointmentModal({
   onClose,
   editingAppointment,
@@ -45,6 +48,16 @@ export default function AppointmentModal({
 
   const selecionados = services.filter((s) => serviceIds.includes(s.id));
   const totalPrevisto = selecionados.reduce((a, s) => a + numOr0(s.price), 0);
+
+  // Hybrid picker: with few services the plain pill wall is unbeatable; past
+  // 8 a search box appears and filters the unselected ones. While a search is
+  // active the marked ones move to the front so they never vanish — outside
+  // of search the order stays put so pills don't jump under the finger.
+  const [busca, setBusca] = useState('');
+  const muitos = services.length > 8;
+  const buscando = muitos && busca.trim().length > 0;
+  const naoSelecionados = services.filter((s) => !serviceIds.includes(s.id) && norm(s.name).includes(norm(busca)));
+  const pillList = buscando ? [...selecionados, ...naoSelecionados] : services;
 
   function toggleService(id: string) {
     setServiceIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
@@ -94,8 +107,9 @@ export default function AppointmentModal({
       </label>
       <div className="field">
         Serviços (toque pra marcar — pode mais de um)
+        {muitos && <input className="input" placeholder="Buscar serviço..." value={busca} onChange={(e) => setBusca(e.target.value)} />}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {services.map((s) => {
+          {pillList.map((s) => {
             const on = serviceIds.includes(s.id);
             return (
               <button key={s.id} className={'pill sm' + (on ? ' active' : '')} onClick={() => toggleService(s.id)}>
@@ -104,6 +118,7 @@ export default function AppointmentModal({
               </button>
             );
           })}
+          {buscando && naoSelecionados.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>Nenhum serviço com esse nome.</span>}
         </div>
         {selecionados.length > 1 && (
           <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
