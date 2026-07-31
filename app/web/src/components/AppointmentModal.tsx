@@ -115,14 +115,16 @@ export default function AppointmentModal({
               <button key={s.id} className={'pill sm' + (on ? ' active' : '')} onClick={() => toggleService(s.id)}>
                 {on ? '✓ ' : ''}
                 {s.name}
+                {numOr0(s.price) > 0 && <span style={{ opacity: 0.65 }}> · {fmtBRL(s.price)}</span>}
               </button>
             );
           })}
           {buscando && naoSelecionados.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>Nenhum serviço com esse nome.</span>}
         </div>
-        {selecionados.length > 1 && (
+        {selecionados.length > 0 && (
           <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
-            {selecionados.length} serviços · total previsto {fmtBRL(totalPrevisto)}
+            {selecionados.length === 1 ? '1 serviço' : `${selecionados.length} serviços`} · total previsto {fmtBRL(totalPrevisto)}
+            {totalPrevisto <= 0 && ' — cadastre o preço do serviço em Serviços pra previsão funcionar'}
           </span>
         )}
       </div>

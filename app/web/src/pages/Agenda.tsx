@@ -277,9 +277,10 @@ export default function Agenda() {
                         const svcs = a.services?.length ? a.services.map((x) => x.service.price) : [];
                         return acc + svcs.reduce((s, v) => s + (v || 0), 0);
                       }, 0);
-                      return previsto > 0 ? (
+                      return appointments.length > 0 ? (
                         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>
-                          {appointments.length} atendimento{appointments.length === 1 ? '' : 's'} · previsto {fmtBRL(previsto)}
+                          {appointments.length} atendimento{appointments.length === 1 ? '' : 's'}
+                          {previsto > 0 && <> · previsto {fmtBRL(previsto)}</>}
                         </div>
                       ) : null;
                     })()}
