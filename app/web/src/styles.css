@@ -1,33 +1,37 @@
+/* Desktop palette, "sharp" pass: near-neutral paper so white cards actually
+   pop, hairline borders you can see, darker ink and a livelier accent. The
+   rosé identity moves from wallpaper to accents. (The phone theme overrides
+   all of this inside its own media block — untouched on purpose.) */
 :root {
-  --bg: oklch(96.5% 0.014 26);
-  --surface: oklch(99.2% 0.006 30);
-  --surface-2: oklch(94% 0.014 28);
-  --border: oklch(93% 0.011 28);
-  --border-strong: oklch(88% 0.02 40);
-  --divider: oklch(92% 0.013 28);
-  --text: oklch(24% 0.02 30);
-  --text-muted: oklch(52% 0.02 30);
-  --text-soft: oklch(60% 0.02 30);
+  --bg: oklch(97.2% 0.007 40);
+  --surface: oklch(99.6% 0.002 40);
+  --surface-2: oklch(94.5% 0.011 32);
+  --border: oklch(89.5% 0.013 35);
+  --border-strong: oklch(82% 0.024 38);
+  --divider: oklch(90.5% 0.011 35);
+  --text: oklch(19% 0.022 30);
+  --text-muted: oklch(46% 0.022 30);
+  --text-soft: oklch(56% 0.02 30);
 
-  --accent: oklch(65% 0.065 32);
-  --accent-2: oklch(58% 0.075 30);
-  --accent-dark: oklch(54% 0.075 32);
-  --accent-text: oklch(56% 0.07 32);
-  --accent-soft: oklch(62% 0.09 20 / 0.12);
-  --accent-soft-strong: oklch(62% 0.09 20 / 0.16);
+  --accent: oklch(57% 0.115 26);
+  --accent-2: oklch(52% 0.12 28);
+  --accent-dark: oklch(48% 0.115 28);
+  --accent-text: oklch(49% 0.105 28);
+  --accent-soft: oklch(58% 0.11 22 / 0.13);
+  --accent-soft-strong: oklch(58% 0.11 22 / 0.2);
 
-  --income: oklch(48% 0.08 150);
-  --income-text: oklch(42% 0.08 150);
-  --income-soft: oklch(50% 0.08 150 / 0.14);
-  --expense: oklch(52% 0.11 35);
-  --expense-text: oklch(46% 0.11 35);
-  --expense-soft: oklch(52% 0.11 35 / 0.12);
-  --warning-text: oklch(45% 0.09 55);
-  --warning-soft: oklch(64% 0.08 55 / 0.14);
+  --income: oklch(46% 0.1 150);
+  --income-text: oklch(39% 0.1 150);
+  --income-soft: oklch(50% 0.1 150 / 0.14);
+  --expense: oklch(50% 0.13 32);
+  --expense-text: oklch(44% 0.13 32);
+  --expense-soft: oklch(52% 0.12 33 / 0.12);
+  --warning-text: oklch(43% 0.1 55);
+  --warning-soft: oklch(64% 0.09 55 / 0.15);
 
-  --active-bg: oklch(62% 0.09 20 / 0.14);
-  --active-color: oklch(56% 0.07 32);
-  --idle-color: oklch(56% 0.02 30);
+  --active-bg: oklch(58% 0.11 22 / 0.15);
+  --active-color: oklch(49% 0.105 28);
+  --idle-color: oklch(50% 0.022 30);
 
   --banner-amber-bg: oklch(97% 0.025 60 / 0.6);
   --banner-amber-border: oklch(88% 0.04 65);
@@ -39,29 +43,31 @@
   --banner-purple-border: oklch(88% 0.03 285);
   --banner-purple-text: oklch(40% 0.07 285);
 
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
-  --shadow-card: 0 1px 3px oklch(55% 0.04 35 / 0.07);
-  --shadow-hero: 0 14px 36px oklch(62% 0.09 20 / 0.28);
-  --shadow-modal: 0 24px 64px oklch(30% 0.04 30 / 0.28);
+  /* Tighter radii + a crisp two-layer shadow (hairline ring + short drop)
+     read as "instrument", not "pillow". */
+  --radius-lg: 18px;
+  --radius-md: 13px;
+  --radius-sm: 10px;
+  --shadow-card: 0 1px 2px oklch(35% 0.03 35 / 0.08), 0 2px 8px oklch(45% 0.03 35 / 0.05);
+  --shadow-hero: 0 10px 28px oklch(52% 0.11 24 / 0.3);
+  --shadow-modal: 0 24px 64px oklch(25% 0.04 30 / 0.32);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: oklch(18% 0.014 30);
-    --surface: oklch(23% 0.016 30);
-    --surface-2: oklch(28% 0.018 30);
-    --border: oklch(32% 0.02 30);
-    --border-strong: oklch(38% 0.025 35);
+    --bg: oklch(15.5% 0.012 30);
+    --surface: oklch(21% 0.015 30);
+    --surface-2: oklch(27% 0.018 30);
+    --border: oklch(34% 0.022 30);
+    --border-strong: oklch(44% 0.03 35);
     --divider: oklch(29% 0.018 30);
-    --text: oklch(93% 0.01 30);
+    --text: oklch(95% 0.008 30);
     --text-muted: oklch(72% 0.017 30);
     --text-soft: oklch(63% 0.017 30);
 
-    --accent: oklch(68% 0.095 32);
+    --accent: oklch(70% 0.115 30);
     --accent-2: oklch(60% 0.1 28);
     --accent-dark: oklch(60% 0.1 30);
     --accent-text: oklch(78% 0.1 32);
@@ -91,7 +97,7 @@
     --banner-purple-border: oklch(55% 0.06 285 / 0.5);
     --banner-purple-text: oklch(84% 0.08 285);
 
-    --shadow-card: 0 1px 3px oklch(0% 0 0 / 0.45);
+    --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.35);
     --shadow-hero: 0 14px 36px oklch(0% 0 0 / 0.5);
     --shadow-modal: 0 24px 64px oklch(0% 0 0 / 0.6);
 
@@ -100,17 +106,17 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: oklch(18% 0.014 30);
-  --surface: oklch(23% 0.016 30);
-  --surface-2: oklch(28% 0.018 30);
-  --border: oklch(32% 0.02 30);
-  --border-strong: oklch(38% 0.025 35);
+  --bg: oklch(15.5% 0.012 30);
+  --surface: oklch(21% 0.015 30);
+  --surface-2: oklch(27% 0.018 30);
+  --border: oklch(34% 0.022 30);
+  --border-strong: oklch(44% 0.03 35);
   --divider: oklch(29% 0.018 30);
-  --text: oklch(93% 0.01 30);
+  --text: oklch(95% 0.008 30);
   --text-muted: oklch(72% 0.017 30);
   --text-soft: oklch(63% 0.017 30);
 
-  --accent: oklch(68% 0.095 32);
+  --accent: oklch(70% 0.115 30);
   --accent-2: oklch(60% 0.1 28);
   --accent-dark: oklch(74% 0.1 32);
   --accent-text: oklch(78% 0.1 32);
@@ -140,7 +146,7 @@
   --banner-purple-border: oklch(55% 0.06 285 / 0.5);
   --banner-purple-text: oklch(84% 0.08 285);
 
-  --shadow-card: 0 1px 3px oklch(0% 0 0 / 0.45);
+  --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.35);
   --shadow-hero: 0 14px 36px oklch(0% 0 0 / 0.5);
   --shadow-modal: 0 24px 64px oklch(0% 0 0 / 0.6);
 
@@ -182,6 +188,9 @@ body {
   color: var(--text);
   font-family: 'Work Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Money and dates line up like an instrument panel instead of wobbling
+     per digit — half the "robust app" feel is numbers that behave. */
+  font-variant-numeric: tabular-nums;
 }
 
 input,
