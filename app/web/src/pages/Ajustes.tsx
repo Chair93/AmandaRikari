@@ -676,14 +676,12 @@ function SettingsCard({ settings }: { settings: Settings }) {
           <button className={'pill sm' + (settings.salaMode === 'off' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'off' })}>
             Não uso
           </button>
-          <button className={'pill sm' + (settings.salaMode === 'fixo' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'fixo' })}>
-            R$ por atendimento
+          <button
+            className={'pill sm' + (settings.salaMode !== 'off' ? ' active' : '')}
+            onClick={() => settings.salaMode === 'off' && saveSettings.mutate({ salaMode: 'pct' })}
+          >
+            Uso sala alugada
           </button>
-          <button className={'pill sm' + (settings.salaMode === 'pct' ? ' active' : '')} onClick={() => saveSettings.mutate({ salaMode: 'pct' })}>
-            % do atendimento
-          </button>
-          {settings.salaMode === 'fixo' && <input className="input" style={{ width: 100 }} inputMode="decimal" placeholder="0,00" {...bind('salaFixo')} />}
-          {settings.salaMode === 'pct' && <input className="input" style={{ width: 70 }} inputMode="decimal" placeholder="Ex: 20" {...bind('salaPct')} />}
         </div>
         {settings.salaMode !== 'off' && (
           <input
@@ -696,7 +694,7 @@ function SettingsCard({ settings }: { settings: Settings }) {
           />
         )}
         <span style={{ fontWeight: 500, fontSize: 11 }}>
-          Aqui você só cadastra o combinado. Em cada atendimento (e sessão de pacote) aparece a opção "Usei a sala alugada" — só os que você marcar somam o valor numa conta a pagar do mês, em nome da dona do espaço, na aba Contas. O custo já conta no resultado do mês; o dinheiro só sai do caixa quando você quitar a conta.
+          O valor (R$ fixo ou %) você escolhe e edita <strong>dentro de cada atendimento</strong>, ao marcar "Usei a sala alugada" — o app lembra o último usado. Cada atendimento marcado soma numa conta a pagar do mês, em nome da dona do espaço, na aba Contas. O custo já conta no resultado; o dinheiro só sai do caixa quando você quitar a conta.
         </span>
       </div>
       <div className="field">

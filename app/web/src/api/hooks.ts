@@ -208,6 +208,8 @@ export interface TxInput {
   payment?: string | null;
   parcelas?: number | null;
   usarSala?: boolean;
+  salaModo?: 'fixo' | 'pct' | null;
+  salaValor?: number | null;
   appointmentId?: string | null;
   capital?: 'aporte' | 'pagamento' | null;
   capitalKind?: 'capital' | 'emprestimo' | null;

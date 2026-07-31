@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
-import { computeServiceCost, feePctFor, salaFeeAmount } from '../calc.js';
+import { computeServiceCost, feePctFor } from '../calc.js';
 import { assertOwned } from '../ownership.js';
 import { applyProductConsumption } from '../consumption.js';
 import { adjustSalaBill } from '../sala.js';
@@ -28,8 +28,12 @@ const bodySchema = z.object({
   distanciaKm: z.number().optional().nullable(),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
   parcelas: z.number().int().min(1).max(24).optional().nullable(),
-  /** Room rental is opt-in per atendimento — only charged when flagged. */
+  /** Room rental is opt-in per atendimento — only charged when flagged.
+   *  Mode and value come with the entry (editable on the spot); when absent
+   *  the remembered defaults in Settings are used. */
   usarSala: z.boolean().optional(),
+  salaModo: z.enum(['fixo', 'pct']).optional().nullable(),
+  salaValor: z.number().min(0).optional().nullable(),
   /** Agenda appointment this atendimento fulfills — linked after creation. */
   appointmentId: z.string().optional().nullable(),
   // sócio (partner) fields — when `capital` is set this is a contribution/payout, not a normal tx
@@ -65,17 +69,17 @@ router.get('/', async (req: AuthedRequest, res) => {
   // edit modal can tell whether this atendimento was flagged as room use.
   const salaFees = await prisma.transaction.findMany({
     where: { businessId: req.businessId, accrualOnly: true, feeOf: { in: rows.map((r) => r.id) } },
-    select: { feeOf: true, amount: true },
+    select: { feeOf: true, amount: true, note: true },
   });
-  const salaByParent = new Map(salaFees.map((f) => [f.feeOf!, f.amount]));
-  res.json(rows.map((r) => ({ ...r, salaFee: salaByParent.get(r.id) ?? null })));
+  const salaByParent = new Map(salaFees.map((f) => [f.feeOf!, f]));
+  res.json(rows.map((r) => ({ ...r, salaFee: salaByParent.get(r.id)?.amount ?? null, salaFeeNote: salaByParent.get(r.id)?.note ?? null })));
 });
 
 router.get('/:id', async (req: AuthedRequest, res) => {
   const row = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: TX_INCLUDE });
   if (!row) return res.status(404).json({ error: 'not_found' });
-  const salaFee = await prisma.transaction.findFirst({ where: { businessId: req.businessId, accrualOnly: true, feeOf: row.id }, select: { amount: true } });
-  res.json({ ...row, salaFee: salaFee?.amount ?? null });
+  const salaFee = await prisma.transaction.findFirst({ where: { businessId: req.businessId, accrualOnly: true, feeOf: row.id }, select: { amount: true, note: true } });
+  res.json({ ...row, salaFee: salaFee?.amount ?? null, salaFeeNote: salaFee?.note ?? null });
 });
 
 async function loadCostCtx(businessId: string) {
@@ -94,6 +98,17 @@ async function findOrCreateCategory(businessId: string, name: string, type: stri
 }
 
 const PAY_LABEL: Record<string, string> = { dinheiro: 'dinheiro', pix: 'Pix', debito: 'débito', credito: 'crédito' };
+
+/** Room fee for one atendimento: mode/value ride with the entry (editable on
+ *  the spot); Settings only carries the remembered defaults. Returns the fee
+ *  plus a note that encodes the mode so an edit can prefill it later. */
+function salaFeeFor(d: { amount: number; usarSala?: boolean; salaModo?: 'fixo' | 'pct' | null; salaValor?: number | null }, settings: { salaMode: string; salaFixo: number; salaPct: number }) {
+  if (!d.usarSala) return { amount: 0, note: '', modo: null as 'fixo' | 'pct' | null, valor: 0 };
+  const modo = d.salaModo || (settings.salaMode === 'pct' ? 'pct' : 'fixo');
+  const valor = d.salaValor ?? (modo === 'pct' ? settings.salaPct : settings.salaFixo);
+  const amount = modo === 'pct' ? round2((d.amount * valor) / 100) : round2(valor);
+  return { amount, note: modo === 'pct' ? `Uso da sala — ${valor}%` : 'Uso da sala', modo, valor };
+}
 
 router.post('/', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
@@ -150,7 +165,8 @@ router.post('/', async (req: AuthedRequest, res) => {
   const feeAmount = round2((d.amount * feePct) / 100);
   // Room rental is opt-in per atendimento: only when the entry is a receita
   // tied to a service AND the user flagged that the rented room was used.
-  const salaAmount = d.type === 'receita' && d.serviceId && d.usarSala ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
+  const sala = d.type === 'receita' && d.serviceId ? salaFeeFor(d, ctx.settings) : { amount: 0, note: '', modo: null, valor: 0 };
+  const salaAmount = sala.amount;
 
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.transaction.create({
@@ -198,9 +214,13 @@ router.post('/', async (req: AuthedRequest, res) => {
       // counts against this month's result), but no cash leaves until the
       // accumulated monthly bill to the room owner is settled in Contas.
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, accrualOnly: true, note: 'Uso da sala' },
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: created.id, accrualOnly: true, note: sala.note },
       });
       await adjustSalaBill(tx, businessId, d.date, salaAmount, ctx.settings.salaOwner || '');
+      // Remember this atendimento's choice as the default for the next one.
+      if (sala.modo) {
+        await tx.settings.update({ where: { businessId }, data: { salaMode: sala.modo, ...(sala.modo === 'pct' ? { salaPct: sala.valor } : { salaFixo: sala.valor }) } });
+      }
     }
     if (d.appointmentId) {
       // updateMany so a forged/foreign id silently no-ops instead of linking
@@ -256,7 +276,8 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
   const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
-  const salaAmount = d.type === 'receita' && d.serviceId && d.usarSala ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
+  const sala = d.type === 'receita' && d.serviceId ? salaFeeFor(d, ctx.settings) : { amount: 0, note: '', modo: null, valor: 0 };
+  const salaAmount = sala.amount;
 
   const result = await prisma.$transaction(async (tx) => {
     // restock according to the delta between previous and next sales
@@ -324,9 +345,12 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     if (salaAmount > 0) {
       const scat = await findOrCreateCategory(businessId, 'Uso de sala', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: existing.id, accrualOnly: true, note: 'Uso da sala' },
+        data: { businessId, type: 'despesa', amount: salaAmount, categoryId: scat.id, date: d.date, feeOf: existing.id, accrualOnly: true, note: sala.note },
       });
       await adjustSalaBill(tx, businessId, d.date, salaAmount, ctx.settings.salaOwner || '');
+      if (sala.modo) {
+        await tx.settings.update({ where: { businessId }, data: { salaMode: sala.modo, ...(sala.modo === 'pct' ? { salaPct: sala.valor } : { salaFixo: sala.valor }) } });
+      }
     }
     return updated;
   });

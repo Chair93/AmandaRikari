@@ -132,6 +132,8 @@ export interface Transaction {
   packageId: string | null;
   /** Amount of the room-use fee tied to this atendimento (null = room not used). */
   salaFee?: number | null;
+  /** The fee's note — encodes the mode ("Uso da sala — 20%") so edits prefill. */
+  salaFeeNote?: string | null;
   items: TxItem[];
   sales: (TxSale & { product?: { name: string } | null })[];
   /** Set on "+ Entrada"/"+ Compra" purchase entries — what was bought. */

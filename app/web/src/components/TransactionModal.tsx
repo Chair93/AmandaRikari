@@ -4,7 +4,7 @@ import { useCategories, useClients, useDeleteTransaction, useEquipment, useProdu
 import { useAuth } from '../auth/AuthContext';
 import type { PaymentMethod, Product, Transaction } from '../api/types';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr, UNIT_LABEL } from '../format';
-import { computeServiceCostPreview, feePctForPreview, salaFeePreview } from '../calcPreview';
+import { computeServiceCostPreview, feePctForPreview } from '../calcPreview';
 
 // Categories the app creates and manages by itself (sócio flows, machine
 // fees, package machinery...). Picking one by hand only creates confusion —
@@ -89,7 +89,26 @@ function TransactionForm({
   const [distanciaKm, setDistanciaKm] = useState(editingTx?.distanciaKm ? String(editingTx.distanciaKm) : '');
   const [payment, setPayment] = useState(editingTx?.payment || 'pix');
   const [parcelas, setParcelas] = useState(editingTx?.parcelas || 1);
-  const [usarSala, setUsarSala] = useState(!!editingTx?.salaFee);
+  // Sala alugada: mode and value live on the entry itself (Ajustes only keeps
+  // the last used values as prefill). Editing recovers the mode from the fee
+  // note ("Uso da sala — 20%" = pct) and the value from it or the fee amount.
+  const salaNotePct = editingTx?.salaFeeNote?.match(/([\d.,]+)\s*%/);
+  const [usarSala, setUsarSala] = useState(editingTx?.salaFee != null);
+  const [salaModo, setSalaModo] = useState<'fixo' | 'pct'>(editingTx?.salaFee != null ? (salaNotePct ? 'pct' : 'fixo') : 'pct');
+  const [salaValor, setSalaValor] = useState(editingTx?.salaFee != null ? (salaNotePct ? salaNotePct[1] : String(editingTx.salaFee).replace('.', ',')) : '');
+  const [salaPrefilled, setSalaPrefilled] = useState(!!editingTx);
+  useEffect(() => {
+    // New entry: prefill with the last values used, once settings arrive.
+    if (salaPrefilled || !settings) return;
+    setSalaPrefilled(true);
+    if (settings.salaMode === 'fixo' && settings.salaFixo > 0) {
+      setSalaModo('fixo');
+      setSalaValor(String(settings.salaFixo).replace('.', ','));
+    } else if (settings.salaPct > 0) {
+      setSalaModo('pct');
+      setSalaValor(String(settings.salaPct).replace('.', ','));
+    }
+  }, [settings, salaPrefilled]);
   const [capital, setCapital] = useState<'aporte' | 'pagamento'>(editingTx?.capital || 'aporte');
   const [capitalKind, setCapitalKind] = useState<'capital' | 'emprestimo'>(editingTx?.capitalKind || 'capital');
   const [socio, setSocio] = useState(editingTx?.socio || '');
@@ -214,7 +233,7 @@ function TransactionForm({
   const feeVal = (numOr0(amount) * feePct) / 100;
   const salesTotalNow = salesTotal(sales);
   const salaOn = settings && settings.salaMode !== 'off';
-  const salaVal = salaOn && serviceId ? salaFeePreview(numOr0(amount), settings) : 0;
+  const salaVal = salaModo === 'pct' ? Math.round(numOr0(amount) * numOr0(salaValor)) / 100 : numOr0(salaValor);
   const cobraSala = !!(salaOn && serviceId && usarSala);
 
   async function onSave() {
@@ -253,6 +272,8 @@ function TransactionForm({
           payment: mode === 'receita' ? payment : null,
           parcelas: mode === 'receita' && payment === 'credito' ? parcelas : null,
           usarSala: mode === 'receita' && cobraSala,
+          salaModo: mode === 'receita' && cobraSala ? salaModo : null,
+          salaValor: mode === 'receita' && cobraSala ? numOr0(salaValor) : null,
           appointmentId: !editingTx && mode === 'receita' ? appointmentId || null : null,
         });
         // Did this atendimento's ficha usage cross any product to zero? Ask
@@ -353,44 +374,153 @@ function TransactionForm({
         </div>
       ) : (
         <>
-          {mode === 'receita' && (
-            <label className="field">
-              Forma de pagamento
-              <select className="input" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod)}>
-                {Object.entries(PAYMENT_LABEL).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              {payment === 'credito' && (
-                <select className="input" style={{ marginTop: 6 }} value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))}>
-                  <option value={1}>1x — à vista (ou parcelado com juros por conta do cliente)</option>
-                  {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
-                    <option key={n} value={n}>
-                      {n}x — taxa sua
+          {/* Field order follows the checkout flow: who → what → when →
+              price & payment → costs of delivering → extras → filing. */}
+          {mode === 'despesa' && (
+            <>
+              <label className="field">
+                Categoria
+                <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                  {catOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
-              )}
-              <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
-                {feePct <= 0 ? 'Sem taxa — entra 100% no caixa.' : `Taxa de ${feePct}%${feeVal > 0 ? ` = ${fmtBRL(feeVal)} lançados como despesa` : ''}`}
-              </span>
-            </label>
+              </label>
+              <label className="field">
+                Valor
+                <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              </label>
+              <label className="field">
+                Data
+                <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </label>
+              <label className="field">
+                Cliente (opcional)
+                <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                  <option value="">Sem cliente</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
           )}
 
           {mode === 'receita' && (
-            <label className="field">
-              Serviço prestado (opcional)
-              <select className="input" value={serviceId} onChange={(e) => onSelectService(e.target.value)}>
-                <option value="">Nenhum / outro</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <>
+              <label className="field">
+                Cliente (opcional)
+                <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                  <option value="">Sem cliente</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Serviço prestado (opcional)
+                <select className="input" value={serviceId} onChange={(e) => onSelectService(e.target.value)}>
+                  <option value="">Nenhum / outro</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="field-row">
+                <label className="field">
+                  Data
+                  <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </label>
+                <label className="field">
+                  Valor
+                  <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                </label>
+              </div>
+              <label className="field">
+                Forma de pagamento
+                <select className="input" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod)}>
+                  {Object.entries(PAYMENT_LABEL).map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {payment === 'credito' && (
+                  <select className="input" style={{ marginTop: 6 }} value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))}>
+                    <option value={1}>1x — à vista (ou parcelado com juros por conta do cliente)</option>
+                    {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+                      <option key={n} value={n}>
+                        {n}x — taxa sua
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  {feePct <= 0 ? 'Sem taxa — entra 100% no caixa.' : `Taxa de ${feePct}%${feeVal > 0 ? ` = ${fmtBRL(feeVal)} lançados como despesa` : ''}`}
+                </span>
+              </label>
+            </>
+          )}
+
+          {mode === 'receita' && salaOn && serviceId && (
+            <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => setUsarSala((v) => !v)} style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    flex: 'none',
+                    borderRadius: 6,
+                    border: '2px solid var(--accent)',
+                    background: usarSala ? 'var(--accent)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--on-accent, white)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {usarSala ? '✓' : ''}
+                </span>
+                <span style={{ fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 10, flex: 1, minWidth: 0, alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text)' }}>
+                    <strong>Usei a sala alugada</strong>
+                    <span style={{ color: 'var(--text-muted)' }}> — soma na conta a pagar do mês</span>
+                  </span>
+                  {usarSala && <span style={{ fontWeight: 700, flex: 'none' }}>{fmtBRL(salaVal)}</span>}
+                </span>
+              </button>
+              {usarSala && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button className={'pill sm' + (salaModo === 'pct' ? ' active' : '')} onClick={() => setSalaModo('pct')}>
+                    % do valor
+                  </button>
+                  <button className={'pill sm' + (salaModo === 'fixo' ? ' active' : '')} onClick={() => setSalaModo('fixo')}>
+                    R$ fixo
+                  </button>
+                  <input
+                    className="input"
+                    style={{ width: 84, flex: 'none', padding: '8px 10px', fontSize: 12.5 }}
+                    inputMode="decimal"
+                    placeholder={salaModo === 'pct' ? 'Ex: 20' : 'Ex: 30,00'}
+                    value={salaValor}
+                    onChange={(e) => setSalaValor(e.target.value)}
+                  />
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', flex: 1, textAlign: 'right', minWidth: 70 }}>
+                    {salaModo === 'pct' ? `${numOr0(salaValor)}% de ${fmtBRL(numOr0(amount))} = ${fmtBRL(salaVal)}` : `= ${fmtBRL(salaVal)}`}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
 
           {mode === 'receita' && (
@@ -450,44 +580,6 @@ function TransactionForm({
             </div>
           )}
 
-          <label className="field">
-            Valor
-            <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </label>
-
-          {mode === 'receita' && salaOn && serviceId && (
-            <button
-              onClick={() => setUsarSala((v) => !v)}
-              style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)' }}
-            >
-              <span
-                style={{
-                  width: 18,
-                  height: 18,
-                  flex: 'none',
-                  borderRadius: 6,
-                  border: '2px solid var(--accent)',
-                  background: usarSala ? 'var(--accent)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--on-accent, white)',
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {usarSala ? '✓' : ''}
-              </span>
-              <span style={{ fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 10, flex: 1, minWidth: 0, alignItems: 'center' }}>
-                <span style={{ color: 'var(--text)' }}>
-                  <strong>Usei a sala alugada</strong>
-                  <span style={{ color: 'var(--text-muted)' }}> — soma na conta a pagar do mês</span>
-                </span>
-                {usarSala && <span style={{ fontWeight: 700, flex: 'none' }}>{fmtBRL(salaVal)}</span>}
-              </span>
-            </button>
-          )}
-
           {mode === 'receita' && (
             <div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>Produtos vendidos (opcional)</div>
@@ -525,35 +617,27 @@ function TransactionForm({
             </div>
           )}
 
-          <label className="field">
-            Categoria
-            <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-              {catOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            Cliente (opcional)
-            <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
-              <option value="">Sem cliente</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {mode === 'receita' && (
+            <label className="field">
+              Categoria
+              <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {catOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </>
       )}
 
-      <label className="field">
-        Data
-        <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </label>
+      {mode === 'socio' && (
+        <label className="field">
+          Data
+          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      )}
       <label className="field">
         Nota (opcional)
         <input className="input" placeholder="Ex: creme + descartáveis" value={note} onChange={(e) => setNote(e.target.value)} />
