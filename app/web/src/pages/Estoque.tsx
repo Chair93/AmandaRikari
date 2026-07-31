@@ -9,6 +9,7 @@ import {
   useEquipmentDeleteImpact,
   usePrevisaoEstoque,
   useProductDeleteImpact,
+  useProductConsumoInterno,
   useProductDiferencaCusto,
   useProductEntrada,
   useProductInventario,
@@ -49,11 +50,12 @@ function EstoqueRow({ p }: { p: Product }) {
   const vender = useProductVender();
   const inventario = useProductInventario();
   const diferenca = useProductDiferencaCusto();
+  const consumoInterno = useProductConsumoInterno();
   const del = useDeleteProduct();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: impact, isPending: impactPending } = useProductDeleteImpact(confirmDelete ? p.id : null);
-  const [prompt, setPrompt] = useState<'entrada' | 'venda' | 'contagem' | 'diferenca' | null>(null);
+  const [prompt, setPrompt] = useState<'entrada' | 'venda' | 'contagem' | 'diferenca' | 'brinde' | null>(null);
   const custo = p.avgCost || p.packageCost;
   const valor = p.stock * p.packageCost;
   const margemUnit = p.salePrice - custo;
@@ -96,6 +98,9 @@ function EstoqueRow({ p }: { p: Product }) {
           </button>
           <button className="pill ghost sm" onClick={() => setPrompt('diferenca')} disabled={p.stock <= 0.005}>
             Dif. de custo
+          </button>
+          <button className="pill ghost sm" onClick={() => setPrompt('brinde')} disabled={p.stock <= 0.005}>
+            Brinde/uso
           </button>
           <button className="pill ghost sm" onClick={() => setEditing(true)}>
             editar
@@ -168,6 +173,22 @@ function EstoqueRow({ p }: { p: Product }) {
           onCancel={() => setPrompt(null)}
           onConfirm={async (v, lancarNoCaixa) => {
             await diferenca.mutateAsync({ id: p.id, valor: v.valor as number, lancarNoCaixa });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'brinde' && (
+        <PromptModal
+          title={`Brinde ou uso interno — ${p.name}`}
+          description={`Saída de estoque sem venda: presente pra cliente ou uso da própria clínica. Baixa do estoque e lança o custo (${fmtBRL(custo)}/un) no resultado, com o rótulo certo — sem mexer no caixa.`}
+          fields={[{ key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty', hint: `Em estoque: ${fmtUn(p.stock)} un` }]}
+          checkboxLabel="Foi brinde pra cliente (desmarcado = uso interno da clínica)"
+          checkboxDefault
+          confirmLabel="Dar baixa"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v, brinde) => {
+            await consumoInterno.mutateAsync({ id: p.id, qty: v.qty as number, brinde });
             setPrompt(null);
           }}
         />

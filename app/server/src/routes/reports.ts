@@ -526,6 +526,8 @@ router.get('/clients/:id', async (req: AuthedRequest, res) => {
   // Referral picture: who brought her in, whom she brought, and how much
   // cash those referrals actually generated.
   const indicadoPor = client.indicadoPorId ? await prisma.client.findFirst({ where: { id: client.indicadoPorId, businessId }, select: { id: true, name: true } }) : null;
+  // No-shows: how many bookings this client simply skipped.
+  const faltas = await prisma.appointment.count({ where: { businessId, clientId: client.id, status: 'faltou' } });
   const indicadosRows = await prisma.client.findMany({ where: { businessId, indicadoPorId: client.id }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
   const indicadosIds = new Set(indicadosRows.map((c) => c.id));
   const receitaIndicados = data.transactions.filter((t) => t.clientId && indicadosIds.has(t.clientId) && t.type === 'receita').reduce((a, t) => a + cashDelta(t), 0);
@@ -535,6 +537,7 @@ router.get('/clients/:id', async (req: AuthedRequest, res) => {
     indicadoPor,
     indicados: indicadosRows,
     receitaIndicados,
+    faltas,
     pago,
     aberto,
     visitas: visitasCount,

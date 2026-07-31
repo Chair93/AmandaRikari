@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAgendaBlock, useDeleteAppointment, useSettings, useToggleAppointmentConfirmou } from '../api/hooks';
+import { useAppointmentsRange, useClientesReport, useDayAgenda, useDeleteAgendaBlock, useAppointmentFaltou, useAppointmentSinal, useDeleteAppointment, useSettings, useToggleAppointmentConfirmou } from '../api/hooks';
 import ClientDetailModal from '../components/ClientDetailModal';
 import { useAuth } from '../auth/AuthContext';
 import { todayStr } from '../format';
 import { comLinkConfirmacao, fillNome, fillWaTemplate, waLink, WA_REATIVACAO_PADRAO } from '../waTemplate';
 import AppointmentModal from '../components/AppointmentModal';
 import BlockModal from '../components/BlockModal';
+import PromptModal from '../components/PromptModal';
 import TransactionModal from '../components/TransactionModal';
 import { fmtBRL } from '../format';
 import type { Appointment } from '../api/types';
@@ -46,6 +47,9 @@ export default function Agenda() {
   const toggleConfirmou = useToggleAppointmentConfirmou();
   const deleteBlock = useDeleteAgendaBlock();
   const deleteAppointment = useDeleteAppointment();
+  const faltou = useAppointmentFaltou();
+  const sinal = useAppointmentSinal();
+  const [sinalDe, setSinalDe] = useState<Appointment | null>(null);
   const { data: clientesData } = useClientesReport();
   const { data: settings } = useSettings();
 
@@ -352,6 +356,16 @@ export default function Agenda() {
                                 Lembrete WhatsApp
                               </a>
                             )}
+                            {a.sinalTx && (
+                              <span className="badge" style={{ background: 'var(--income-soft)', color: 'var(--income-text)' }} title="Sinal já recebido — será abatido no registro">
+                                💰 sinal {fmtBRL(a.sinalTx.amount)}
+                              </span>
+                            )}
+                            {!a.tx && !a.sinalTx && isOwner && (
+                              <button className="pill ghost sm" title="Registrar sinal pago pra reservar o horário" onClick={() => setSinalDe(a)}>
+                                💰 Sinal
+                              </button>
+                            )}
                             {!a.tx && isOwner && (
                               <button
                                 className={'pill ghost sm' + (a.confirmou ? ' active' : '')}
@@ -359,6 +373,15 @@ export default function Agenda() {
                                 onClick={() => toggleConfirmou.mutate(a.id)}
                               >
                                 {a.confirmou ? '✓ confirmou' : 'confirmou?'}
+                              </button>
+                            )}
+                            {!a.tx && isOwner && a.date <= today && (
+                              <button
+                                className="pill ghost sm"
+                                title="Cliente não veio — registra a falta na ficha"
+                                onClick={() => window.confirm(`${a.client.name} faltou? A falta fica registrada na ficha dela.`) && faltou.mutate(a.id)}
+                              >
+                                faltou
                               </button>
                             )}
                             {isOwner && (
@@ -453,6 +476,7 @@ export default function Agenda() {
           defaultServiceIds={svcIds(atender)}
           defaultDate={atender.date}
           appointmentId={atender.id}
+          sinalValor={atender.sinalTx?.amount || undefined}
           onSaved={() => {
             const a = atender;
             // Ask after the tx modal is gone; auto-opening without asking
@@ -467,6 +491,33 @@ export default function Agenda() {
       )}
       {detailId && <ClientDetailModal clientId={detailId} onClose={() => setDetailId(null)} />}
       {blockModal && <BlockModal onClose={() => setBlockModal(false)} defaultDate={selectedDate} />}
+      {sinalDe && (
+        <PromptModal
+          title={`Sinal — ${sinalDe.client.name}`}
+          description="Valor pago antecipado pra garantir o horário. Entra no caixa hoje e é abatido automaticamente quando você registrar o atendimento."
+          fields={[
+            { key: 'valor', label: 'Valor do sinal (R$)', kind: 'money' },
+            {
+              key: 'payment',
+              label: 'Como recebeu',
+              kind: 'select',
+              defaultValue: 'pix',
+              options: [
+                { value: 'pix', label: 'Pix' },
+                { value: 'dinheiro', label: 'Dinheiro' },
+                { value: 'debito', label: 'Cartão de débito' },
+                { value: 'credito', label: 'Cartão de crédito (1x)' },
+              ],
+            },
+          ]}
+          confirmLabel="Registrar sinal"
+          onCancel={() => setSinalDe(null)}
+          onConfirm={async (v) => {
+            await sinal.mutateAsync({ id: sinalDe.id, valor: v.valor as number, payment: v.payment as string });
+            setSinalDe(null);
+          }}
+        />
+      )}
     </>
   );
 }

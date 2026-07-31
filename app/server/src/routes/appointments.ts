@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.js';
 import { assertOwned } from '../ownership.js';
+import { feePctFor } from '../calc.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,6 +16,7 @@ const APT_INCLUDE = {
   service: { select: { id: true, name: true } },
   services: { include: { service: { select: { id: true, name: true, price: true } } } },
   tx: { select: { id: true, amount: true } },
+  sinalTx: { select: { id: true, amount: true } },
 } as const;
 
 const bodySchema = z.object({
@@ -145,6 +147,66 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const row = await prisma.appointment.update({
     where: { id: existing.id },
     data: { ...rest, serviceId: ids[0] || null, services: { deleteMany: {}, create: ids.map((sid) => ({ serviceId: sid })) } },
+    include: APT_INCLUDE,
+  });
+  res.json(row);
+});
+
+/** Reservation deposit: money in today (normal receita, card fee applies),
+ *  linked to the booking so registering the atendimento can net it out. */
+const sinalSchema = z.object({
+  valor: z.number().gt(0),
+  payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).default('pix'),
+  parcelas: z.number().int().min(1).max(24).optional(),
+});
+router.post('/:id/sinal', async (req: AuthedRequest, res) => {
+  const parsed = sinalSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  const apt = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { client: { select: { name: true } } } });
+  if (!apt) return res.status(404).json({ error: 'not_found' });
+  if (apt.sinalTxId) return res.status(400).json({ error: 'Este agendamento já tem sinal registrado.' });
+  if (apt.txId) return res.status(400).json({ error: 'Atendimento já registrado — sinal não faz mais sentido aqui.' });
+  const d = parsed.data;
+  const businessId = req.businessId!;
+  const [settings] = await Promise.all([prisma.settings.upsert({ where: { businessId }, update: {}, create: { businessId } })]);
+  const parcelas = d.payment === 'credito' ? d.parcelas || 1 : null;
+  const feePct = feePctFor(d.payment, settings, parcelas);
+  const fee = Math.round(d.valor * feePct) / 100;
+  const row = await prisma.$transaction(async (tx) => {
+    let cat = await tx.category.findFirst({ where: { businessId, type: 'receita', name: 'Sinal de agendamento' } });
+    if (!cat) cat = await tx.category.create({ data: { businessId, name: 'Sinal de agendamento', type: 'receita' } });
+    const t = await tx.transaction.create({
+      data: {
+        businessId,
+        type: 'receita',
+        amount: d.valor,
+        categoryId: cat.id,
+        clientId: apt.clientId,
+        date: new Date().toISOString().slice(0, 10),
+        payment: d.payment,
+        parcelas,
+        note: `Sinal — ${apt.client.name} (${apt.date.slice(8, 10)}/${apt.date.slice(5, 7)} ${apt.time})`,
+      },
+    });
+    if (fee > 0) {
+      let fcat = await tx.category.findFirst({ where: { businessId, type: 'despesa', name: 'Taxas de maquininha' } });
+      if (!fcat) fcat = await tx.category.create({ data: { businessId, name: 'Taxas de maquininha', type: 'despesa' } });
+      await tx.transaction.create({ data: { businessId, type: 'despesa', amount: fee, categoryId: fcat.id, date: t.date, feeOf: t.id, note: `Taxa ${d.payment}` } });
+    }
+    return tx.appointment.update({ where: { id: apt.id }, data: { sinalTxId: t.id }, include: APT_INCLUDE });
+  });
+  res.json(row);
+});
+
+/** Toggle no-show: the client didn't come. Leaves the day view (only
+ *  'confirmed' bookings show) but stays counted on the client's ficha. */
+router.post('/:id/faltou', async (req: AuthedRequest, res) => {
+  const existing = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  if (existing.txId) return res.status(400).json({ error: 'Este agendamento já virou atendimento.' });
+  const row = await prisma.appointment.update({
+    where: { id: existing.id },
+    data: { status: existing.status === 'faltou' ? 'confirmed' : 'faltou' },
     include: APT_INCLUDE,
   });
   res.json(row);

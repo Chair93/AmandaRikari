@@ -8,8 +8,10 @@ export interface PromptField {
   hint?: string;
   defaultValue?: string;
   /** 'money'/'qty' validate as numbers > 0; 'count' allows zero (an
-   *  inventory count of 0 is honest data); 'text' is free-form. */
-  kind?: 'money' | 'qty' | 'count' | 'text';
+   *  inventory count of 0 is honest data); 'text' is free-form; 'select'
+   *  picks from `options`. */
+  kind?: 'money' | 'qty' | 'count' | 'text' | 'select';
+  options?: { value: string; label: string }[];
   required?: boolean;
 }
 
@@ -52,6 +54,10 @@ export default function PromptModal({
 
     for (const f of fields) {
       const raw = (values[f.key] ?? '').trim();
+      if (f.kind === 'select') {
+        out[f.key] = raw;
+        continue;
+      }
       if (f.kind === 'text') {
         if (f.required !== false && raw === '') return setError(`Preencha ${f.label.toLowerCase()}.`);
         out[f.key] = raw;
@@ -82,14 +88,24 @@ export default function PromptModal({
         {fields.map((f, i) => (
           <label className="field" key={f.key}>
             {f.label}
-            <input
-              className="input"
-              inputMode={f.kind === 'text' ? undefined : 'decimal'}
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus={i === 0}
-              value={values[f.key] ?? ''}
-              onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-            />
+            {f.kind === 'select' ? (
+              <select className="input" value={values[f.key] ?? ''} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}>
+                {(f.options || []).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="input"
+                inputMode={f.kind === 'text' ? undefined : 'decimal'}
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus={i === 0}
+                value={values[f.key] ?? ''}
+                onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+              />
+            )}
             {f.hint && <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>{f.hint}</span>}
           </label>
         ))}

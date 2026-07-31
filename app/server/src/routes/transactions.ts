@@ -28,6 +28,16 @@ const bodySchema = z.object({
   distanciaKm: z.number().optional().nullable(),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
   parcelas: z.number().int().min(1).max(24).optional().nullable(),
+  /** Fiado: 'agora' (default) = paid in full today; 'parte' = only
+   *  valorRecebido enters the caixa now, the rest becomes a receivable;
+   *  'depois' = nothing today, everything becomes a receivable. */
+  recebimento: z.enum(['agora', 'depois', 'parte']).optional(),
+  valorRecebido: z.number().min(0).optional().nullable(),
+  fiadoVenc: z.string().optional().nullable(),
+  /** Split payment (misto): second leg — valor2 paid via payment2. */
+  payment2: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
+  valor2: z.number().gt(0).optional().nullable(),
+  parcelas2: z.number().int().min(1).max(24).optional().nullable(),
   /** Room rental is opt-in per atendimento — only charged when flagged.
    *  Mode and value come with the entry (editable on the spot); when absent
    *  the remembered defaults in Settings are used. */
@@ -166,8 +176,30 @@ router.post('/', async (req: AuthedRequest, res) => {
   });
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
   const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
-  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
-  const feeAmount = round2((d.amount * feePct) / 100);
+  // Fiado: revenue is earned today (accrual), cash arrives with the bill.
+  const receb = d.type === 'receita' ? d.recebimento || 'agora' : 'agora';
+  const cashNow = receb === 'parte' ? Math.min(round2(d.valorRecebido || 0), d.amount) : receb === 'depois' ? 0 : d.amount;
+  const fiadoResto = round2(d.amount - cashNow);
+  const fiado = d.type === 'receita' && receb !== 'agora' && fiadoResto > 0.005;
+  // Split payment (misto): leg 2 pays valor2 via payment2, leg 1 the rest.
+  const misto = d.type === 'receita' && !fiado && !!d.payment2 && (d.valor2 || 0) > 0.005 && (d.valor2 || 0) < d.amount - 0.005;
+  const parcelas2 = misto && d.payment2 === 'credito' ? d.parcelas2 || 1 : null;
+  // Card fees, one per money leg actually received today.
+  const feePlan: { amount: number; note: string }[] = [];
+  const feeNoteFor = (m: string, n: number | null) => `Taxa ${PAY_LABEL[m]}${n && n > 1 ? ` ${n}x` : ''}`;
+  if (d.type === 'receita') {
+    if (misto) {
+      const v2 = round2(d.valor2!);
+      const v1 = round2(d.amount - v2);
+      const f1 = round2((v1 * feePctFor(payMethod, ctx.settings, parcelas)) / 100);
+      const f2 = round2((v2 * feePctFor(d.payment2!, ctx.settings, parcelas2)) / 100);
+      if (f1 > 0) feePlan.push({ amount: f1, note: feeNoteFor(payMethod!, parcelas) + ' (parte 1)' });
+      if (f2 > 0) feePlan.push({ amount: f2, note: feeNoteFor(d.payment2!, parcelas2) + ' (parte 2)' });
+    } else if (!fiado || cashNow > 0.005) {
+      const f = round2(((fiado ? cashNow : d.amount) * feePctFor(payMethod, ctx.settings, parcelas)) / 100);
+      if (f > 0) feePlan.push({ amount: f, note: feeNoteFor(payMethod!, parcelas) });
+    }
+  }
   // Room rental is opt-in per atendimento: only when the entry is a receita
   // tied to a service AND the user flagged that the rented room was used.
   const sala = d.type === 'receita' && d.serviceId ? salaFeeFor(d, ctx.settings) : { amount: 0, note: '', modo: null, valor: 0 };
@@ -186,14 +218,35 @@ router.post('/', async (req: AuthedRequest, res) => {
         variableCost,
         date: d.date,
         note: d.note || null,
-        payment: payMethod,
-        parcelas,
+        // Fiado main entry earns revenue without moving cash; the cash legs
+        // and the receivable below carry the money side.
+        accrualOnly: fiado,
+        payment: fiado ? null : payMethod,
+        parcelas: fiado ? null : parcelas,
+        payment2: misto ? d.payment2 : null,
+        valor2: misto ? round2(d.valor2!) : null,
+        parcelas2: misto ? parcelas2 : null,
         consumoBaixado: true,
         items: { create: items.map((it) => ({ kind: it.kind, productId: it.kind === 'product' ? it.refId : null, equipmentId: it.kind === 'equipment' ? it.refId : null, qty: it.qty })) },
         sales: { create: salesData },
       },
       include: TX_INCLUDE,
     });
+    if (fiado) {
+      // Part paid on the spot enters as a cash-only child; the rest becomes
+      // a receivable that dies with the atendimento (fiadoOf cascade).
+      if (cashNow > 0.005) {
+        await tx.transaction.create({
+          data: { businessId, type: 'receita', amount: cashNow, categoryId: d.categoryId!, clientId: d.clientId || null, date: d.date, cashOnly: true, feeOf: created.id, payment: payMethod, parcelas, note: 'Parte paga na hora' },
+        });
+      }
+      const cliente = d.clientId ? ctx.settings && (await tx.client.findFirst({ where: { id: d.clientId }, select: { name: true } })) : null;
+      const svcName = d.serviceId ? (await tx.service.findFirst({ where: { id: d.serviceId }, select: { name: true } }))?.name : null;
+      const due = d.fiadoVenc || new Date(new Date(d.date + 'T00:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10);
+      await tx.bill.create({
+        data: { businessId, kind: 'receber', desc: `Fiado — ${cliente?.name || 'cliente'}${svcName ? ' · ' + svcName : ''}`, amount: fiadoResto, due, clientId: d.clientId || null, fiadoOf: created.id },
+      });
+    }
     if (salesData.length) {
       for (const sl of salesData) {
         await tx.product.update({ where: { id: sl.productId }, data: { stock: { decrement: sl.qty } } });
@@ -207,10 +260,10 @@ router.post('/', async (req: AuthedRequest, res) => {
       ctx.products,
       'consume'
     );
-    if (feeAmount > 0) {
+    for (const f of feePlan) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: created.id, note: `Taxa ${PAY_LABEL[payMethod!]}${parcelas && parcelas > 1 ? ` ${parcelas}x` : ""}` },
+        data: { businessId, type: 'despesa', amount: f.amount, categoryId: fcat.id, date: d.date, feeOf: created.id, note: f.note },
       });
     }
     if (salaAmount > 0) {
@@ -244,6 +297,13 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId }, include: { sales: true, items: true } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const d = parsed.data;
+  // A fiado atendimento is a small web (accrual entry + cash leg + open
+  // receivable) — editing it in place would silently desync the three.
+  const fiadoArtifacts = await prisma.bill.findFirst({ where: { fiadoOf: existing.id }, select: { id: true } });
+  if (fiadoArtifacts || (existing.accrualOnly && existing.type === 'receita' && !existing.packageId && !existing.feeOf)) {
+    const legs = await prisma.transaction.findFirst({ where: { feeOf: existing.id, type: 'receita', cashOnly: true }, select: { id: true } });
+    if (fiadoArtifacts || legs) return res.status(400).json({ error: 'Este lançamento tem fiado (valor a receber). Pra alterar, exclua e registre de novo — a conta a receber sai junto.' });
+  }
 
   if (d.capital) {
     if (!d.socio?.trim()) return res.status(400).json({ error: 'Informe o nome do sócio' });
@@ -284,8 +344,23 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   });
   const payMethod = d.type === 'receita' ? d.payment || 'pix' : null;
   const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
-  const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
-  const feeAmount = round2((d.amount * feePct) / 100);
+  const misto = d.type === 'receita' && !!d.payment2 && (d.valor2 || 0) > 0.005 && (d.valor2 || 0) < d.amount - 0.005;
+  const parcelas2 = misto && d.payment2 === 'credito' ? d.parcelas2 || 1 : null;
+  const feePlan: { amount: number; note: string }[] = [];
+  const feeNoteFor = (m: string, n: number | null) => `Taxa ${PAY_LABEL[m]}${n && n > 1 ? ` ${n}x` : ''}`;
+  if (d.type === 'receita') {
+    if (misto) {
+      const v2 = round2(d.valor2!);
+      const v1 = round2(d.amount - v2);
+      const f1 = round2((v1 * feePctFor(payMethod, ctx.settings, parcelas)) / 100);
+      const f2 = round2((v2 * feePctFor(d.payment2!, ctx.settings, parcelas2)) / 100);
+      if (f1 > 0) feePlan.push({ amount: f1, note: feeNoteFor(payMethod!, parcelas) + ' (parte 1)' });
+      if (f2 > 0) feePlan.push({ amount: f2, note: feeNoteFor(d.payment2!, parcelas2) + ' (parte 2)' });
+    } else {
+      const f = round2((d.amount * feePctFor(payMethod, ctx.settings, parcelas)) / 100);
+      if (f > 0) feePlan.push({ amount: f, note: feeNoteFor(payMethod!, parcelas) });
+    }
+  }
   const sala = d.type === 'receita' && d.serviceId ? salaFeeFor(d, ctx.settings) : { amount: 0, note: '', modo: null, valor: 0 };
   const salaAmount = sala.amount;
 
@@ -331,6 +406,9 @@ router.put('/:id', async (req: AuthedRequest, res) => {
         note: d.note || null,
         payment: payMethod,
         parcelas,
+        payment2: misto ? d.payment2 : null,
+        valor2: misto ? round2(d.valor2!) : null,
+        parcelas2: misto ? parcelas2 : null,
         consumoBaixado: true,
         capital: null,
         socio: null,
@@ -346,10 +424,10 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     const oldSalaFee = await tx.transaction.findFirst({ where: { feeOf: existing.id, accrualOnly: true } });
     await tx.transaction.deleteMany({ where: { feeOf: existing.id } });
     if (oldSalaFee) await adjustSalaBill(tx, businessId, oldSalaFee.date, -oldSalaFee.amount, ctx.settings.salaOwner || '');
-    if (feeAmount > 0) {
+    for (const f of feePlan) {
       const fcat = await findOrCreateCategory(businessId, 'Taxas de maquininha', 'despesa');
       await tx.transaction.create({
-        data: { businessId, type: 'despesa', amount: feeAmount, categoryId: fcat.id, date: d.date, feeOf: existing.id, note: `Taxa ${PAY_LABEL[payMethod!]}${parcelas && parcelas > 1 ? ` ${parcelas}x` : ""}` },
+        data: { businessId, type: 'despesa', amount: f.amount, categoryId: fcat.id, date: d.date, feeOf: existing.id, note: f.note },
       });
     }
     if (salaAmount > 0) {
@@ -393,6 +471,33 @@ router.delete('/:id', async (req: AuthedRequest, res) => {
 });
 
 /** Pró-labore withdrawal — posts a despesa flagged `prolabore: true`. */
+/** Refund without rewriting history: books a 'Devoluções' expense tied to
+ *  the client, keeps the original atendimento (and its already-paid card
+ *  fee) untouched. Partial refunds welcome. */
+const devolverSchema = z.object({ valor: z.number().gt(0) });
+router.post('/:id/devolver', async (req: AuthedRequest, res) => {
+  const parsed = devolverSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { client: { select: { name: true } }, service: { select: { name: true } } } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  if (existing.type !== 'receita') return res.status(400).json({ error: 'Só receitas podem ser devolvidas.' });
+  const cat = await findOrCreateCategory(req.businessId!, 'Devoluções', 'despesa');
+  const origem = existing.service?.name || existing.note || 'atendimento';
+  const row = await prisma.transaction.create({
+    data: {
+      businessId: req.businessId!,
+      type: 'despesa',
+      amount: parsed.data.valor,
+      categoryId: cat.id,
+      clientId: existing.clientId,
+      date: new Date().toISOString().slice(0, 10),
+      note: `Devolução — ${origem}${existing.client ? ' (' + existing.client.name + ')' : ''} de ${existing.date.slice(8, 10)}/${existing.date.slice(5, 7)}`,
+    },
+    include: TX_INCLUDE,
+  });
+  res.status(201).json(row);
+});
+
 const sacarSchema = z.object({ amount: z.number().gt(0) });
 router.post('/sacar-prolabore', async (req: AuthedRequest, res) => {
   const parsed = sacarSchema.safeParse(req.body);

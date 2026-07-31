@@ -38,7 +38,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   const { data: fotos = [] } = useClientPhotos(clientId);
 
   if (!data) return null;
-  const { client, pago, aberto, visitas, ticketMedio, bills, history, packages, indicadoPor, indicados = [], receitaIndicados = 0 } = data;
+  const { client, pago, aberto, visitas, ticketMedio, bills, history, packages, indicadoPor, indicados = [], receitaIndicados = 0, faltas = 0 } = data;
 
 
   return (
@@ -49,6 +49,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
           <Stat label="Está devendo" value={fmtBRL(aberto)} color={aberto > 0 ? 'var(--expense-text)' : 'var(--income-text)'} />
           <Stat label="Visitas" value={String(visitas)} />
           <Stat label="Ticket médio" value={fmtBRL(ticketMedio)} />
+          {faltas > 0 && <Stat label="Faltas" value={String(faltas)} color="var(--warning-text)" />}
         </div>
 
         {(indicadoPor || indicados.length > 0) && (

@@ -287,8 +287,19 @@ model Transaction {
   packageId String?
   pkg       Package? @relation(fields: [packageId], references: [id])
 
+  /// Split payment ("misto"): second leg method/value/installments. The
+  /// primary `payment` covers amount - valor2; fees are booked per leg.
+  payment2  String?
+  valor2    Float?
+  parcelas2 Int?
+
   items TransactionItem[]
   sales TransactionSale[]
+  /// Fiado: open receivable(s) born from this atendimento — deleting the
+  /// atendimento takes the unpaid bill with it.
+  fiadoBills Bill[] @relation("Fiado")
+  /// Appointments whose reservation deposit (sinal) this receita is.
+  sinalAppointments Appointment[] @relation("Sinal")
   /// Agenda appointments fulfilled by this atendimento.
   appointments Appointment[]
   /// Antes/depois photos documenting this atendimento.
@@ -394,6 +405,10 @@ model Bill {
   settledAt  String?
   txId       String?
   recId      String?
+  /// Atendimento this receivable is the unpaid part of (fiado). Cascade:
+  /// deleting the atendimento removes the open bill.
+  fiadoOf    String?
+  fiadoTx    Transaction? @relation("Fiado", fields: [fiadoOf], references: [id], onDelete: Cascade)
   /// 'YYYY-MM' this recurring bill was generated for. Unique together with
   /// recId so two concurrent requests can't both create the same month's bill.
   recMonth   String?
@@ -481,6 +496,9 @@ model Appointment {
   /// the Agenda show what actually happened. Cleared if the tx is deleted.
   txId        String?
   tx          Transaction? @relation(fields: [txId], references: [id], onDelete: SetNull)
+  /// Reservation deposit (sinal) already paid for this booking.
+  sinalTxId   String?
+  sinalTx     Transaction? @relation("Sinal", fields: [sinalTxId], references: [id], onDelete: SetNull)
   /// Extra services beyond the primary `serviceId` — a booking can combine
   /// several procedures; `serviceId` stays as the first one for legacy reads.
   services    AppointmentService[]

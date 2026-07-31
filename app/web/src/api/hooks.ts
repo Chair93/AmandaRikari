@@ -102,6 +102,13 @@ export function useProductDiferencaCusto() {
     onSuccess: invalidate,
   });
 }
+export function useProductConsumoInterno() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (input: { id: string; qty: number; brinde?: boolean }) => api.post(`/products/${input.id}/consumo-interno`, input),
+    onSuccess: invalidate,
+  });
+}
 export function useProductEntrada() {
   const invalidate = useInvalidateAll();
   return useMutation({
@@ -215,6 +222,12 @@ export interface TxInput {
   distanciaKm?: number | null;
   payment?: string | null;
   parcelas?: number | null;
+  recebimento?: 'agora' | 'depois' | 'parte';
+  valorRecebido?: number | null;
+  fiadoVenc?: string | null;
+  payment2?: string | null;
+  valor2?: number | null;
+  parcelas2?: number | null;
   usarSala?: boolean;
   salaModo?: 'fixo' | 'pct' | null;
   salaValor?: number | null;
@@ -243,6 +256,10 @@ export function useSaveTransaction() {
     mutationFn: (input: TxInput) => (input.id ? api.put<Transaction>(`/transactions/${input.id}`, input) : api.post<Transaction>('/transactions', input)),
     onSuccess: invalidate,
   });
+}
+export function useDevolverTransacao() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (input: { id: string; valor: number }) => api.post<Transaction>(`/transactions/${input.id}/devolver`, { valor: input.valor }), onSuccess: invalidate });
 }
 export function useDeleteTransaction() {
   const invalidate = useInvalidateAll();
@@ -406,6 +423,17 @@ export function useSaveAppointment() {
       input.id ? api.put<Appointment>(`/appointments/${input.id}`, input) : api.post<Appointment>('/appointments', input),
     onSuccess: invalidate,
   });
+}
+export function useAppointmentSinal() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (input: { id: string; valor: number; payment: string; parcelas?: number }) => api.post<Appointment>(`/appointments/${input.id}/sinal`, input),
+    onSuccess: invalidate,
+  });
+}
+export function useAppointmentFaltou() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (id: string) => api.post<Appointment>(`/appointments/${id}/faltou`), onSuccess: invalidate });
 }
 export function useDeleteAppointment() {
   const invalidate = useInvalidateAll();

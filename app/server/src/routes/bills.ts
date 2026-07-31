@@ -84,7 +84,9 @@ router.post('/:id/settle', async (req: AuthedRequest, res) => {
         // expensed its share when it accrued, so paying the owner is cash
         // out with no second hit to the DRE.
         variableCost: type === 'receita' && !b.packageId ? 0 : null,
-        cashOnly: !!b.packageId || b.sala,
+        // Fiado settles cash-only too: the revenue was already recognized on
+        // the atendimento's accrual entry — this is just the money arriving.
+        cashOnly: !!b.packageId || b.sala || !!b.fiadoOf,
         packageId: b.packageId,
         note: b.desc,
       },

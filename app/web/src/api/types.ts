@@ -128,6 +128,10 @@ export interface Transaction {
   socio: string | null;
   payment: PaymentMethod | null;
   parcelas: number | null;
+  /** Split payment: second leg (valor2 via payment2). */
+  payment2?: PaymentMethod | null;
+  valor2?: number | null;
+  parcelas2?: number | null;
   feeOf: string | null;
   prolabore: boolean;
   estoque: boolean;
@@ -199,6 +203,8 @@ export interface Bill {
   settledAt: string | null;
   txId: string | null;
   recId: string | null;
+  /** Atendimento this receivable is the fiado of (dies with it). */
+  fiadoOf?: string | null;
 }
 
 export interface Recurring {
@@ -222,7 +228,7 @@ export interface Appointment {
   date: string;
   time: string;
   durationMin: number;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'faltou';
   /** Client answered the reminder confirming they'll come. */
   confirmou: boolean;
   /** Token for the public one-tap confirmation link (/c/:token). */
@@ -231,6 +237,9 @@ export interface Appointment {
   /** Atendimento registered from this appointment (null until it happens). */
   txId?: string | null;
   tx?: { id: string; amount: number } | null;
+  /** Reservation deposit already paid for this booking. */
+  sinalTxId?: string | null;
+  sinalTx?: { id: string; amount: number } | null;
 }
 
 export interface AgendaBlock {
@@ -416,6 +425,8 @@ export interface ClientDetailData {
   indicadoPor: { id: string; name: string } | null;
   indicados: { id: string; name: string }[];
   receitaIndicados: number;
+  /** Bookings this client skipped (no-show). */
+  faltas?: number;
   pago: number;
   aberto: number;
   visitas: number;

@@ -163,6 +163,38 @@ router.post('/:id/diferenca-custo', async (req: AuthedRequest, res) => {
   res.json(updated);
 });
 
+/** Gift or in-house use: stock goes down and the cost hits the month's
+ *  result under its own label — no cash moves, and it doesn't pollute the
+ *  'Perda de inventário' history that powers the ficha-técnica suggestions. */
+const consumoInternoSchema = z.object({ qty: z.number().gt(0), brinde: z.boolean().optional() });
+router.post('/:id/consumo-interno', async (req: AuthedRequest, res) => {
+  const parsed = consumoInternoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+  const p = await prisma.product.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!p) return res.status(404).json({ error: 'not_found' });
+  const { qty, brinde } = parsed.data;
+  const custo = Math.round(qty * (p.avgCost || p.packageCost) * 100) / 100;
+  const updated = await prisma.$transaction(async (tx) => {
+    const prod = await tx.product.update({ where: { id: p.id }, data: { stock: { decrement: qty } } });
+    let cat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Brinde / uso interno' } });
+    if (!cat) cat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Brinde / uso interno', type: 'despesa' } });
+    await tx.transaction.create({
+      data: {
+        businessId: req.businessId!,
+        type: 'despesa',
+        amount: custo,
+        categoryId: cat.id,
+        date: new Date().toISOString().slice(0, 10),
+        accrualOnly: true,
+        productId: p.id,
+        note: `${brinde ? 'Brinde' : 'Uso interno'}: ${p.name} x${qty}`,
+      },
+    });
+    return prod;
+  });
+  res.json(updated);
+});
+
 /** Estoque "Vender" — sells stock directly (not tied to an appointment), records revenue + margin. */
 const venderSchema = z.object({ qty: z.number().gt(0), unitPrice: z.number().gt(0) });
 router.post('/:id/vender', async (req: AuthedRequest, res) => {

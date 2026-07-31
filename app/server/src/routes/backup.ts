@@ -173,6 +173,9 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           socio: t.socio || null,
           payment: t.payment || null,
           parcelas: t.parcelas || null,
+          payment2: t.payment2 || null,
+          valor2: t.valor2 ?? null,
+          parcelas2: t.parcelas2 || null,
           prolabore: !!t.prolabore,
           estoque: !!t.estoque,
           ativo: !!t.ativo,
@@ -208,6 +211,8 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           settledAt: b.settledAt || null,
           sala: !!b.sala,
           recMonth: b.recMonth || null,
+          // Fiado receivable follows its atendimento onto the new ids.
+          fiadoOf: b.fiadoOf ? txIdMap.get(b.fiadoOf) || null : null,
         },
       });
     }
@@ -240,6 +245,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
           status: a.status || 'confirmed',
           note: a.note || null,
           txId: a.txId ? txIdMap.get(a.txId) || null : null,
+          sinalTxId: a.sinalTxId ? txIdMap.get(a.sinalTxId) || null : null,
           confirmou: !!a.confirmou,
         },
       });
