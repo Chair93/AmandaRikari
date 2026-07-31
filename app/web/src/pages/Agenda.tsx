@@ -39,7 +39,7 @@ function endMin(time: string, durationMin: number): string {
 export default function Agenda() {
   const { isOwner } = useAuth();
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string; defaultDate?: string; defaultClientId?: string; defaultServiceId?: string } | null>(null);
+  const [modal, setModal] = useState<{ editing?: Appointment; defaultTime?: string; defaultDate?: string; defaultClientId?: string; defaultServiceId?: string; defaultServiceIds?: string[] } | null>(null);
   const [atender, setAtender] = useState<Appointment | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [blockModal, setBlockModal] = useState(false);
@@ -88,6 +88,16 @@ export default function Agenda() {
   const blocks = dayAgenda?.blocks || [];
   const availableSlots = dayAgenda?.availableSlots || [];
 
+  /** All booked procedures joined for display ("Limpeza + Peeling"). */
+  function svcNames(a: Appointment): string | null {
+    if (a.services?.length) return a.services.map((x) => x.service.name).join(' + ');
+    return a.service?.name || null;
+  }
+  function svcIds(a: Appointment): string[] {
+    if (a.services?.length) return a.services.map((x) => x.serviceId);
+    return a.serviceId ? [a.serviceId] : [];
+  }
+
   function whatsAppReminder(a: Appointment) {
     const fone = (a.client.phone || '').replace(/\D/g, '');
     if (!fone) return null;
@@ -97,7 +107,7 @@ export default function Agenda() {
         clientName: a.client.name,
         date: a.date,
         time: a.time,
-        serviceName: a.service?.name || null,
+        serviceName: svcNames(a),
       }),
       a.confirmToken
     );
@@ -305,7 +315,7 @@ export default function Agenda() {
                             >
                               {a.client.name}
                             </button>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{a.service?.name || 'Atendimento'}{a.note ? ` · ${a.note}` : ''}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{svcNames(a) || 'Atendimento'}{a.note ? ` · ${a.note}` : ''}</div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {a.tx ? (
@@ -414,6 +424,7 @@ export default function Agenda() {
           defaultTime={modal.defaultTime}
           defaultClientId={modal.defaultClientId}
           defaultServiceId={modal.defaultServiceId}
+          defaultServiceIds={modal.defaultServiceIds}
         />
       )}
       {atender && (
@@ -422,7 +433,7 @@ export default function Agenda() {
           defaultType="receita"
           lockType
           defaultClientId={atender.clientId}
-          defaultServiceId={atender.serviceId || undefined}
+          defaultServiceIds={svcIds(atender)}
           defaultDate={atender.date}
           appointmentId={atender.id}
           onSaved={() => {
@@ -431,7 +442,7 @@ export default function Agenda() {
             // would feel pushy when the client isn't rebooking.
             setTimeout(() => {
               if (a && window.confirm('Atendimento registrado! Já quer deixar o retorno agendado?')) {
-                setModal({ defaultClientId: a.clientId, defaultServiceId: a.serviceId || undefined, defaultDate: addDays(a.date, 28), defaultTime: a.time });
+                setModal({ defaultClientId: a.clientId, defaultServiceIds: svcIds(a), defaultDate: addDays(a.date, 28), defaultTime: a.time });
               }
             }, 150);
           }}

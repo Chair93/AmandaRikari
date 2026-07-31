@@ -33,7 +33,7 @@ export async function loadAll(businessId: string) {
     prisma.settings.upsert({ where: { businessId }, update: {}, create: { businessId } }),
     prisma.bill.findMany({ where: { businessId } }),
     prisma.package.findMany({ where: { businessId } }),
-    prisma.appointment.findMany({ where: { businessId } }),
+    prisma.appointment.findMany({ where: { businessId }, include: { services: true } }),
   ]);
   return { transactions: transactions as unknown as TxRow[], categories: categories as CategoryRow[], clients, products, equipment, services, settings, bills, packages, appointments };
 }
@@ -72,12 +72,16 @@ export function previsaoEstoque(data: Awaited<ReturnType<typeof loadAll>>, dias 
   const consumo = new Map<string, number>();
   let agendados = 0;
   for (const a of data.appointments) {
-    if (a.status !== 'confirmed' || !a.serviceId || a.date < hoje || a.date > limite) continue;
-    const sv = svcById.get(a.serviceId);
-    if (!sv) continue;
+    if (a.status !== 'confirmed' || a.date < hoje || a.date > limite) continue;
+    // A booking may hold several procedures; fall back to the legacy single id.
+    const ids = a.services?.length ? a.services.map((s) => s.serviceId) : a.serviceId ? [a.serviceId] : [];
+    const svs = ids.map((id) => svcById.get(id)).filter(Boolean);
+    if (!svs.length) continue;
     agendados++;
-    for (const it of sv.items) {
-      if (it.kind === 'product' && it.productId) consumo.set(it.productId, (consumo.get(it.productId) || 0) + it.qty);
+    for (const sv of svs) {
+      for (const it of sv!.items) {
+        if (it.kind === 'product' && it.productId) consumo.set(it.productId, (consumo.get(it.productId) || 0) + it.qty);
+      }
     }
   }
   const r2 = (v: number) => Math.round(v * 100) / 100;

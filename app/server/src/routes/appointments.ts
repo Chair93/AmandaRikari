@@ -8,9 +8,20 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireOwnerForWrites);
 
+/** Every read carries the combined services list — a booking can hold more
+ *  than one procedure; `service` stays as the primary/first for legacy UI. */
+const APT_INCLUDE = {
+  client: { select: { id: true, name: true, phone: true } },
+  service: { select: { id: true, name: true } },
+  services: { include: { service: { select: { id: true, name: true, price: true } } } },
+  tx: { select: { id: true, amount: true } },
+} as const;
+
 const bodySchema = z.object({
   clientId: z.string().min(1),
   serviceId: z.string().optional().nullable(),
+  /** Multiple procedures in one visit — serviceId doubles as the first one. */
+  serviceIds: z.array(z.string().min(1)).max(10).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   durationMin: z.number().int().gt(0).optional(),
@@ -38,7 +49,7 @@ router.get('/', async (req: AuthedRequest, res) => {
       status: 'confirmed',
       ...(from && to ? { date: { gte: from, lte: to } } : {}),
     },
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+    include: APT_INCLUDE,
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
   });
   res.json(rows);
@@ -53,7 +64,7 @@ router.get('/day', async (req: AuthedRequest, res) => {
     prisma.settings.upsert({ where: { businessId: req.businessId }, update: {}, create: { businessId: req.businessId! } }),
     prisma.appointment.findMany({
       where: { businessId: req.businessId, date, status: 'confirmed' },
-      include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+      include: APT_INCLUDE,
       orderBy: { time: 'asc' },
     }),
     prisma.agendaBlock.findMany({ where: { businessId: req.businessId, date }, orderBy: { time: 'asc' } }),
@@ -106,10 +117,19 @@ router.delete('/blocks/:id', async (req: AuthedRequest, res) => {
 router.post('/', async (req: AuthedRequest, res) => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
-  await assertOwned(req.businessId!, { clientIds: [parsed.data.clientId], serviceIds: [parsed.data.serviceId] });
+  const { serviceIds, serviceId, ...rest } = parsed.data;
+  const ids = [...new Set((serviceIds?.length ? serviceIds : serviceId ? [serviceId] : []).filter(Boolean))] as string[];
+  await assertOwned(req.businessId!, { clientIds: [rest.clientId], serviceIds: ids });
   const row = await prisma.appointment.create({
-    data: { businessId: req.businessId!, durationMin: 60, ...parsed.data, status: 'confirmed' },
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+    data: {
+      businessId: req.businessId!,
+      durationMin: 60,
+      ...rest,
+      serviceId: ids[0] || null,
+      services: { create: ids.map((sid) => ({ serviceId: sid })) },
+      status: 'confirmed',
+    },
+    include: APT_INCLUDE,
   });
   res.status(201).json(row);
 });
@@ -119,11 +139,13 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const existing = await prisma.appointment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
-  await assertOwned(req.businessId!, { clientIds: [parsed.data.clientId], serviceIds: [parsed.data.serviceId] });
+  const { serviceIds, serviceId, ...rest } = parsed.data;
+  const ids = [...new Set((serviceIds?.length ? serviceIds : serviceId ? [serviceId] : []).filter(Boolean))] as string[];
+  await assertOwned(req.businessId!, { clientIds: [rest.clientId], serviceIds: ids });
   const row = await prisma.appointment.update({
     where: { id: existing.id },
-    data: parsed.data,
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+    data: { ...rest, serviceId: ids[0] || null, services: { deleteMany: {}, create: ids.map((sid) => ({ serviceId: sid })) } },
+    include: APT_INCLUDE,
   });
   res.json(row);
 });
@@ -135,7 +157,7 @@ router.post('/:id/confirmou', async (req: AuthedRequest, res) => {
   const row = await prisma.appointment.update({
     where: { id: existing.id },
     data: { confirmou: !existing.confirmou },
-    include: { client: { select: { id: true, name: true, phone: true } }, service: { select: { id: true, name: true } }, tx: { select: { id: true, amount: true } } },
+    include: APT_INCLUDE,
   });
   res.json(row);
 });

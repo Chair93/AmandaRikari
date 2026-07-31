@@ -216,6 +216,8 @@ export interface Appointment {
   client: { id: string; name: string; phone: string | null };
   serviceId: string | null;
   service: { id: string; name: string } | null;
+  /** All procedures booked for this visit (serviceId is the first of them). */
+  services?: { serviceId: string; service: { id: string; name: string; price: number } }[];
   date: string;
   time: string;
   durationMin: number;

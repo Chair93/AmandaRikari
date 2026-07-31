@@ -139,6 +139,11 @@ router.post('/', async (req: AuthedRequest, res) => {
     return res.status(201).json(row);
   }
 
+  // A pure product sale (VendaModal) doesn't ask for a category — it always
+  // files under "Venda de produtos".
+  if (!d.categoryId && d.type === 'receita' && (d.sales || []).length > 0) {
+    d.categoryId = (await findOrCreateCategory(businessId, 'Venda de produtos', 'receita')).id;
+  }
   if (!d.categoryId) return res.status(400).json({ error: 'Categoria é obrigatória' });
   const ctx = await loadCostCtx(businessId);
   const items = d.type === 'receita' ? d.items || [] : [];
@@ -253,6 +258,11 @@ router.put('/:id', async (req: AuthedRequest, res) => {
     return res.json(row);
   }
 
+  // A pure product sale (VendaModal) doesn't ask for a category — it always
+  // files under "Venda de produtos".
+  if (!d.categoryId && d.type === 'receita' && (d.sales || []).length > 0) {
+    d.categoryId = (await findOrCreateCategory(businessId, 'Venda de produtos', 'receita')).id;
+  }
   if (!d.categoryId) return res.status(400).json({ error: 'Categoria é obrigatória' });
   const ctx = await loadCostCtx(businessId);
   const items = d.type === 'receita' ? d.items || [] : [];

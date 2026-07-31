@@ -21,7 +21,7 @@ export async function exportBusiness(businessId: string) {
     prisma.recurring.findMany({ where: { businessId } }),
     prisma.package.findMany({ where: { businessId } }),
     prisma.settings.findUnique({ where: { businessId } }),
-    prisma.appointment.findMany({ where: { businessId } }),
+    prisma.appointment.findMany({ where: { businessId }, include: { services: true } }),
     prisma.agendaBlock.findMany({ where: { businessId } }),
     // Photo METADATA only — the encrypted files live on the volume and are
     // reconnected by keeping the same photo ids on restore.
@@ -210,11 +210,21 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     for (const a of d.appointments || []) {
       const clientId = cliIdMap.get(a.clientId);
       if (!clientId) continue; // client didn't survive the restore — skip rather than fail
+      // Multi-service bookings: remap every linked service; fall back to the
+      // legacy single serviceId for backups from before the join table.
+      const svcIds = [
+        ...new Set(
+          ((a.services as { serviceId: string }[] | undefined)?.map((s) => s.serviceId) || (a.serviceId ? [a.serviceId] : []))
+            .map((sid: string) => svcIdMap.get(sid))
+            .filter(Boolean) as string[]
+        ),
+      ];
       await tx.appointment.create({
         data: {
           businessId,
           clientId,
-          serviceId: a.serviceId ? svcIdMap.get(a.serviceId) || null : null,
+          serviceId: svcIds[0] || null,
+          services: { create: svcIds.map((sid) => ({ serviceId: sid })) },
           date: a.date,
           time: a.time,
           durationMin: a.durationMin || 60,

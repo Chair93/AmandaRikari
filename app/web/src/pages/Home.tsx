@@ -10,9 +10,10 @@ import ClientModal from '../components/ClientModal';
 import BillModal from '../components/BillModal';
 import PackageModal from '../components/PackageModal';
 import AppointmentModal from '../components/AppointmentModal';
+import VendaModal from '../components/VendaModal';
 
-type ModalKind = 'tx-receita' | 'tx-despesa' | 'client' | 'bill' | 'package' | 'appointment' | null;
-type ActionKey = Exclude<ModalKind, null> | 'sell-product';
+type ModalKind = 'tx-receita' | 'tx-despesa' | 'client' | 'bill' | 'package' | 'appointment' | 'sell-product' | null;
+type ActionKey = Exclude<ModalKind, null>;
 
 /** The trailing chevron on a row that goes somewhere. Hidden above the phone
  *  breakpoint, where the cards read as cards rather than list rows. */
@@ -131,7 +132,6 @@ export default function Home() {
   const alertRoute: Record<string, string> = { bill: '/contas', stock: '/estoque', client: '/clientes', appointment: '/agenda' };
 
   function runAction(key: ActionKey) {
-    if (key === 'sell-product') return navigate('/estoque');
     setModal(key);
   }
 
@@ -158,7 +158,7 @@ export default function Home() {
                   <span style={{ fontWeight: 700, flex: 'none', width: 44 }}>{a.time}</span>
                   <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.client.name}
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {a.service?.name || 'Atendimento'}</span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {a.services?.length ? a.services.map((x) => x.service.name).join(' + ') : a.service?.name || 'Atendimento'}</span>
                   </span>
                   {a.tx ? (
                     <span className="badge" style={{ background: 'var(--income-soft)', color: 'var(--income-text)', flex: 'none' }}>✓ atendido</span>
@@ -177,7 +177,7 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {amanha.appointments.map((a) => {
                 const msg = comLinkConfirmacao(
-                  fillWaTemplate(settings?.waTemplate || '', { clientName: a.client.name, date: a.date, time: a.time, serviceName: a.service?.name || null }),
+                  fillWaTemplate(settings?.waTemplate || '', { clientName: a.client.name, date: a.date, time: a.time, serviceName: a.services?.length ? a.services.map((x) => x.service.name).join(' + ') : a.service?.name || null }),
                   a.confirmToken
                 );
                 return (
@@ -293,6 +293,7 @@ export default function Home() {
       {modal === 'bill' && <BillModal onClose={() => setModal(null)} defaultKind="receber" />}
       {modal === 'package' && <PackageModal onClose={() => setModal(null)} />}
       {modal === 'appointment' && <AppointmentModal onClose={() => setModal(null)} defaultDate={todayStr()} />}
+      {modal === 'sell-product' && <VendaModal onClose={() => setModal(null)} />}
       {guide && <GuideModal onClose={() => setGuide(false)} />}
     </div>
   );

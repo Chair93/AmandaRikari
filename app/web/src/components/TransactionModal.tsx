@@ -46,6 +46,7 @@ function TransactionForm({
   defaultType,
   defaultClientId,
   defaultServiceId,
+  defaultServiceIds,
   defaultDate,
   appointmentId,
   onSaved,
@@ -57,6 +58,9 @@ function TransactionForm({
   defaultClientId?: string;
   /** Pre-fills service + items/price — used when registering from the Agenda. */
   defaultServiceId?: string;
+  /** Agenda booking with several procedures: prices sum, fichas merge, the
+   *  first one becomes the tx's serviceId and the note records the combo. */
+  defaultServiceIds?: string[];
   defaultDate?: string;
   /** Agenda appointment to link the created atendimento to. */
   appointmentId?: string;
@@ -139,11 +143,25 @@ function TransactionForm({
   // once so it never clobbers what the user changed by hand.
   const [serviceApplied, setServiceApplied] = useState(false);
   useEffect(() => {
-    if (serviceApplied || !defaultServiceId || editingTx || services.length === 0) return;
+    const ids = defaultServiceIds?.length ? defaultServiceIds : defaultServiceId ? [defaultServiceId] : [];
+    if (serviceApplied || ids.length === 0 || editingTx || services.length === 0) return;
     setServiceApplied(true);
-    onSelectService(defaultServiceId);
+    if (ids.length === 1) {
+      onSelectService(ids[0]);
+      return;
+    }
+    // Several procedures in one visit: prices sum, fichas merge, the first
+    // becomes the tx's serviceId and the note records the combo.
+    const svcs = ids.map((id) => services.find((s) => s.id === id)).filter((s): s is (typeof services)[number] => !!s);
+    setServiceId(ids[0]);
+    if (!amount) {
+      const total = Math.round(svcs.reduce((a, s) => a + numOr0(s.price), 0) * 100) / 100;
+      if (total > 0) setAmount(String(total).replace('.', ','));
+    }
+    setItems(svcs.flatMap((s) => s.items.map((it) => ({ id: nextRowId(), kind: it.kind, refId: (it.productId || it.equipmentId)!, qty: String(it.qty) }))));
+    setNote((n) => n || svcs.map((s) => s.name).join(' + '));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [services, serviceApplied, defaultServiceId, editingTx]);
+  }, [services, serviceApplied, defaultServiceId, defaultServiceIds, editingTx]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -760,6 +778,7 @@ export default function TransactionModal({
   defaultType,
   defaultClientId,
   defaultServiceId,
+  defaultServiceIds,
   defaultDate,
   appointmentId,
   onSaved,
@@ -770,6 +789,7 @@ export default function TransactionModal({
   defaultType?: 'receita' | 'despesa';
   defaultClientId?: string;
   defaultServiceId?: string;
+  defaultServiceIds?: string[];
   defaultDate?: string;
   appointmentId?: string;
   onSaved?: () => void;
@@ -784,6 +804,7 @@ export default function TransactionModal({
       defaultType={defaultType}
       defaultClientId={defaultClientId}
       defaultServiceId={defaultServiceId}
+      defaultServiceIds={defaultServiceIds}
       defaultDate={defaultDate}
       appointmentId={appointmentId}
       onSaved={onSaved}

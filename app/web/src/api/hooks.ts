@@ -393,7 +393,7 @@ export function useDayAgenda(date: string) {
 export function useSaveAppointment() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; clientId: string; serviceId?: string | null; date: string; time: string; durationMin?: number; note?: string | null }) =>
+    mutationFn: (input: { id?: string; clientId: string; serviceId?: string | null; serviceIds?: string[]; date: string; time: string; durationMin?: number; note?: string | null }) =>
       input.id ? api.put<Appointment>(`/appointments/${input.id}`, input) : api.post<Appointment>('/appointments', input),
     onSuccess: invalidate,
   });

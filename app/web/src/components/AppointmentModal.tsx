@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Modal from './Modal';
 import { useClients, useDeleteAppointment, useSaveAppointment, useServices } from '../api/hooks';
 import type { Appointment } from '../api/types';
-import { numOr0 } from '../format';
+import { fmtBRL, numOr0 } from '../format';
 
 export default function AppointmentModal({
   onClose,
@@ -11,6 +11,7 @@ export default function AppointmentModal({
   defaultTime,
   defaultClientId,
   defaultServiceId,
+  defaultServiceIds,
 }: {
   onClose: () => void;
   editingAppointment?: Appointment | null;
@@ -19,6 +20,7 @@ export default function AppointmentModal({
   /** Pre-fill for the "já agendar o retorno?" flow after an atendimento. */
   defaultClientId?: string;
   defaultServiceId?: string;
+  defaultServiceIds?: string[];
 }) {
   const { data: clients = [] } = useClients();
   const { data: services = [] } = useServices();
@@ -26,12 +28,27 @@ export default function AppointmentModal({
   const deleteAppointment = useDeleteAppointment();
 
   const [clientId, setClientId] = useState(editingAppointment?.clientId || defaultClientId || '');
-  const [serviceId, setServiceId] = useState(editingAppointment?.serviceId || defaultServiceId || '');
+  // A visit can combine several procedures — services toggle on/off.
+  const [serviceIds, setServiceIds] = useState<string[]>(() => {
+    if (editingAppointment) {
+      const fromList = editingAppointment.services?.map((s) => s.serviceId) || [];
+      return fromList.length ? fromList : editingAppointment.serviceId ? [editingAppointment.serviceId] : [];
+    }
+    if (defaultServiceIds?.length) return defaultServiceIds;
+    return defaultServiceId ? [defaultServiceId] : [];
+  });
   const [date, setDate] = useState(editingAppointment?.date || defaultDate || '');
   const [time, setTime] = useState(editingAppointment?.time || defaultTime || '');
   const [durationMin, setDurationMin] = useState(String(editingAppointment?.durationMin || 60));
   const [note, setNote] = useState(editingAppointment?.note || '');
   const [error, setError] = useState<string | null>(null);
+
+  const selecionados = services.filter((s) => serviceIds.includes(s.id));
+  const totalPrevisto = selecionados.reduce((a, s) => a + numOr0(s.price), 0);
+
+  function toggleService(id: string) {
+    setServiceIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  }
 
   async function onSave() {
     if (!clientId || !date || !time) {
@@ -42,7 +59,8 @@ export default function AppointmentModal({
       await saveAppointment.mutateAsync({
         id: editingAppointment?.id,
         clientId,
-        serviceId: serviceId || null,
+        serviceIds,
+        serviceId: serviceIds[0] || null,
         date,
         time,
         durationMin: Math.max(5, Math.round(numOr0(durationMin)) || 60),
@@ -61,13 +79,6 @@ export default function AppointmentModal({
     onClose();
   }
 
-  function onSelectService(id: string) {
-    setServiceId(id);
-    const svc = services.find((s) => s.id === id);
-    // Best-effort default so the slot isn't obviously too short — the user can still edit it.
-    if (svc && !editingAppointment) setDurationMin((d) => d || '60');
-  }
-
   return (
     <Modal title={editingAppointment ? 'Editar agendamento' : 'Novo agendamento'} onClose={onClose}>
       <label className="field">
@@ -81,17 +92,25 @@ export default function AppointmentModal({
           ))}
         </select>
       </label>
-      <label className="field">
-        Serviço (opcional)
-        <select className="input" value={serviceId} onChange={(e) => onSelectService(e.target.value)}>
-          <option value="">Nenhum / outro</option>
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="field">
+        Serviços (toque pra marcar — pode mais de um)
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {services.map((s) => {
+            const on = serviceIds.includes(s.id);
+            return (
+              <button key={s.id} className={'pill sm' + (on ? ' active' : '')} onClick={() => toggleService(s.id)}>
+                {on ? '✓ ' : ''}
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+        {selecionados.length > 1 && (
+          <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
+            {selecionados.length} serviços · total previsto {fmtBRL(totalPrevisto)}
+          </span>
+        )}
+      </div>
       <div className="field-row">
         <label className="field">
           Data
