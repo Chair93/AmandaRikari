@@ -1659,15 +1659,9 @@ select.input:focus {
     border-bottom-color: var(--border);
   }
 
-  /* Tool, not brochure: firmer corners and a shallow shadow. The float-y
-     22px radius + long shadow reads "cute website"; software is precise.
-     The phone keeps its iOS rounding — this block never reaches it. */
-  :root {
-    --radius-lg: 14px;
-    --radius-md: 10px;
-    --radius-sm: 8px;
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05);
-  }
+  /* (The old radius/shadow override lived here and was silently masking the
+     sharp tokens now set at :root — removed so the 12/8/6 scale and the
+     two-layer card shadow actually apply on desktop.) */
 
   /* Active rail item in duotone: accent stroke + the icon's signature area
      filled at 18%. */
