@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useIsMutating } from '@tanstack/react-query';
 import PageHeader from '../components/PageHeader';
 import {
   useCategories,
@@ -194,10 +195,21 @@ export default function Ajustes() {
   }
 
   const { isOwner } = useAuth();
+  // Everything on this page saves on blur — the chip makes that visible so
+  // nobody hunts for a Save button (or wonders whether the change stuck).
+  const salvando = useIsMutating() > 0;
 
   return (
     <>
-      <PageHeader title="Ajustes" subtitle="Taxas, custos de referência, pró-labore, meta e backup" />
+      <PageHeader
+        title="Ajustes"
+        subtitle="Taxas, custos de referência, pró-labore, meta e backup"
+        right={
+          <span className="badge" style={salvando ? { background: 'var(--warning-soft)', color: 'var(--warning-text)' } : { background: 'var(--income-soft)', color: 'var(--income-text)' }}>
+            {salvando ? 'Salvando…' : '✓ salva sozinho ao sair do campo'}
+          </span>
+        }
+      />
       <div className="scroll-area">
         <div className="page">
           {settings && <SettingsCard settings={settings} />}

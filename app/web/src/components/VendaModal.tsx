@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
 import { useClients, useProducts, useSaveTransaction, useSettings } from '../api/hooks';
-import type { PaymentMethod } from '../api/types';
+import type { PaymentMethod, Settings } from '../api/types';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr } from '../format';
 
 const un = (v: number) => Math.round(v * 100) / 100;
 import { feePctForPreview } from '../calcPreview';
+
+/** Option label with the registered rate: "3x — taxa 6,85%". */
+function parcelaLabel(n: number, settings: Settings | undefined) {
+  const pct = feePctForPreview('credito', settings, n >= 2 ? n : undefined);
+  return `${n}x — ` + (pct > 0 ? `taxa ${String(pct).replace('.', ',')}%` : 'sem taxa cadastrada');
+}
+
 
 interface Row {
   id: string;
@@ -193,10 +200,10 @@ export default function VendaModal({ onClose }: { onClose: () => void }) {
         </select>
         {payment === 'credito' && (
           <select className="input" style={{ marginTop: 6 }} value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))}>
-            <option value={1}>1x — à vista (ou parcelado com juros por conta do cliente)</option>
+            <option value={1}>1x — à vista · {parcelaLabel(1, settings).split(' — ')[1]} (parcelado com juros é por conta do cliente)</option>
             {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
               <option key={n} value={n}>
-                {n}x — taxa sua
+                {parcelaLabel(n, settings)}
               </option>
             ))}
           </select>
