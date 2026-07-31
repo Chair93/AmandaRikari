@@ -265,8 +265,24 @@ export default function Agenda() {
             <div style={{ flex: 2, minWidth: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div className="serif" style={{ fontSize: 17, fontWeight: 600, textTransform: 'capitalize' }}>
-                    {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                  <div>
+                    <div className="serif" style={{ fontSize: 17, fontWeight: 600, textTransform: 'capitalize' }}>
+                      {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                    </div>
+                    {(() => {
+                      // What the booked day is worth: registered atendimentos by
+                      // their real value, the rest by the services' list price.
+                      const previsto = appointments.reduce((acc, a) => {
+                        if (a.tx) return acc + a.tx.amount;
+                        const svcs = a.services?.length ? a.services.map((x) => x.service.price) : [];
+                        return acc + svcs.reduce((s, v) => s + (v || 0), 0);
+                      }, 0);
+                      return previsto > 0 ? (
+                        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 500 }}>
+                          {appointments.length} atendimento{appointments.length === 1 ? '' : 's'} · previsto {fmtBRL(previsto)}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   {isOwner && (
                     <div style={{ display: 'flex', gap: 6 }}>

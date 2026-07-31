@@ -26,6 +26,15 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
   const dias = daysUntil(bill.due);
   const venceLabel = dias === 0 ? 'vence hoje' : dias > 0 ? `em ${dias} dia${dias === 1 ? '' : 's'}` : `atrasada ${-dias} dia${dias === -1 ? '' : 's'}`;
 
+  // One-tap polite payment reminder — only for receivables tied to a client
+  // with a phone on file.
+  const fone = kind === 'receber' ? (client?.phone || '').replace(/\D/g, '') : '';
+  const cobrarLink = fone
+    ? `https://api.whatsapp.com/send?phone=${fone.length <= 11 ? '55' + fone : fone}&text=${encodeURIComponent(
+        `Oiii ${client!.name.split(' ')[0]}, tudo bem? 💗 Passando só pra lembrar do pagamento de ${bill.desc} (${fmtBRL(bill.amount)}), combinado pra ${fmtDateBR(bill.due)}. Qualquer coisa me chama! 😊`
+      )}`
+    : null;
+
   return (
     <div className="list-row">
       <div style={{ flex: '1 1 160px', minWidth: 0 }}>
@@ -40,6 +49,11 @@ function BillRow({ bill, kind }: { bill: Bill; kind: 'pagar' | 'receber' }) {
       </div>
       {isOwner && (
         <div className="row-actions">
+          {cobrarLink && (
+            <a className="pill sm" href={cobrarLink} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+              💬 Cobrar
+            </a>
+          )}
           <button className={'pill sm ' + (kind === 'pagar' ? 'expense' : 'income')} onClick={() => setSettling(true)}>
             {kind === 'pagar' ? 'Dar baixa' : 'Recebi'}
           </button>

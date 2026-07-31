@@ -541,6 +541,17 @@ function TransactionForm({
             </div>
           )}
 
+          {mode === 'receita' && numOr0(amount) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5, padding: '10px 12px', background: 'var(--income-soft)', borderRadius: 10 }}>
+              <span style={{ color: 'var(--income-text)' }}>
+                💰 Sobra estimada <span style={{ opacity: 0.75 }}>(valor − produtos/energia − taxa{cobraSala ? ' − sala' : ''})</span>
+              </span>
+              <span style={{ fontWeight: 700, color: 'var(--income-text)', flex: 'none' }}>
+                {fmtBRL(Math.max(0, numOr0(amount) - variableCostPreview - feeVal - (cobraSala ? salaVal : 0)))}
+              </span>
+            </div>
+          )}
+
           {mode === 'receita' && (
             <div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>Itens usados neste atendimento</div>
