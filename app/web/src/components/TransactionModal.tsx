@@ -89,6 +89,7 @@ function TransactionForm({
   const [distanciaKm, setDistanciaKm] = useState(editingTx?.distanciaKm ? String(editingTx.distanciaKm) : '');
   const [payment, setPayment] = useState(editingTx?.payment || 'pix');
   const [parcelas, setParcelas] = useState(editingTx?.parcelas || 1);
+  const [usarSala, setUsarSala] = useState(!!editingTx?.salaFee);
   const [capital, setCapital] = useState<'aporte' | 'pagamento'>(editingTx?.capital || 'aporte');
   const [capitalKind, setCapitalKind] = useState<'capital' | 'emprestimo'>(editingTx?.capitalKind || 'capital');
   const [socio, setSocio] = useState(editingTx?.socio || '');
@@ -214,6 +215,7 @@ function TransactionForm({
   const salesTotalNow = salesTotal(sales);
   const salaOn = settings && settings.salaMode !== 'off';
   const salaVal = salaOn && serviceId ? salaFeePreview(numOr0(amount), settings) : 0;
+  const cobraSala = !!(salaOn && serviceId && usarSala);
 
   async function onSave() {
     setError(null);
@@ -250,6 +252,7 @@ function TransactionForm({
           distanciaKm: mode === 'receita' ? numOr0(distanciaKm) : 0,
           payment: mode === 'receita' ? payment : null,
           parcelas: mode === 'receita' && payment === 'credito' ? parcelas : null,
+          usarSala: mode === 'receita' && cobraSala,
           appointmentId: !editingTx && mode === 'receita' ? appointmentId || null : null,
         });
         // Did this atendimento's ficha usage cross any product to zero? Ask
@@ -452,17 +455,37 @@ function TransactionForm({
             <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </label>
 
-          {mode === 'receita' && salaOn && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
-              {serviceId ? (
-                <>
-                  <span style={{ color: 'var(--text-muted)' }}>Uso da sala — soma na conta a pagar do mês</span>
-                  <span style={{ fontWeight: 600, flex: 'none' }}>{fmtBRL(salaVal)}</span>
-                </>
-              ) : (
-                <span style={{ color: 'var(--text-muted)' }}>Sem serviço selecionado, este lançamento não conta uso de sala.</span>
-              )}
-            </div>
+          {mode === 'receita' && salaOn && serviceId && (
+            <button
+              onClick={() => setUsarSala((v) => !v)}
+              style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)' }}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  flex: 'none',
+                  borderRadius: 6,
+                  border: '2px solid var(--accent)',
+                  background: usarSala ? 'var(--accent)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--on-accent, white)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {usarSala ? '✓' : ''}
+              </span>
+              <span style={{ fontSize: 12.5, display: 'flex', justifyContent: 'space-between', gap: 10, flex: 1, minWidth: 0, alignItems: 'center' }}>
+                <span style={{ color: 'var(--text)' }}>
+                  <strong>Usei a sala alugada</strong>
+                  <span style={{ color: 'var(--text-muted)' }}> — soma na conta a pagar do mês</span>
+                </span>
+                {usarSala && <span style={{ fontWeight: 700, flex: 'none' }}>{fmtBRL(salaVal)}</span>}
+              </span>
+            </button>
           )}
 
           {mode === 'receita' && (

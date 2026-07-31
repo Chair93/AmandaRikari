@@ -28,6 +28,8 @@ const bodySchema = z.object({
   distanciaKm: z.number().optional().nullable(),
   payment: z.enum(['dinheiro', 'pix', 'debito', 'credito']).optional().nullable(),
   parcelas: z.number().int().min(1).max(24).optional().nullable(),
+  /** Room rental is opt-in per atendimento — only charged when flagged. */
+  usarSala: z.boolean().optional(),
   /** Agenda appointment this atendimento fulfills — linked after creation. */
   appointmentId: z.string().optional().nullable(),
   // sócio (partner) fields — when `capital` is set this is a contribution/payout, not a normal tx
@@ -59,13 +61,21 @@ router.get('/', async (req: AuthedRequest, res) => {
     include: TX_INCLUDE,
     orderBy: { date: 'desc' },
   });
-  res.json(rows);
+  // A sala fee is the accrualOnly child expense — surface its amount so the
+  // edit modal can tell whether this atendimento was flagged as room use.
+  const salaFees = await prisma.transaction.findMany({
+    where: { businessId: req.businessId, accrualOnly: true, feeOf: { in: rows.map((r) => r.id) } },
+    select: { feeOf: true, amount: true },
+  });
+  const salaByParent = new Map(salaFees.map((f) => [f.feeOf!, f.amount]));
+  res.json(rows.map((r) => ({ ...r, salaFee: salaByParent.get(r.id) ?? null })));
 });
 
 router.get('/:id', async (req: AuthedRequest, res) => {
   const row = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: TX_INCLUDE });
   if (!row) return res.status(404).json({ error: 'not_found' });
-  res.json(row);
+  const salaFee = await prisma.transaction.findFirst({ where: { businessId: req.businessId, accrualOnly: true, feeOf: row.id }, select: { amount: true } });
+  res.json({ ...row, salaFee: salaFee?.amount ?? null });
 });
 
 async function loadCostCtx(businessId: string) {
@@ -138,9 +148,9 @@ router.post('/', async (req: AuthedRequest, res) => {
   const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
   const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
-  // Room rental is charged per atendimento — a receita tied to a service.
-  // Plain product sales or loose receitas don't use the rented room.
-  const salaAmount = d.type === 'receita' && d.serviceId ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
+  // Room rental is opt-in per atendimento: only when the entry is a receita
+  // tied to a service AND the user flagged that the rented room was used.
+  const salaAmount = d.type === 'receita' && d.serviceId && d.usarSala ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
 
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.transaction.create({
@@ -246,7 +256,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const parcelas = d.type === 'receita' && payMethod === 'credito' ? d.parcelas || 1 : null;
   const feePct = d.type === 'receita' ? feePctFor(payMethod, ctx.settings, parcelas) : 0;
   const feeAmount = round2((d.amount * feePct) / 100);
-  const salaAmount = d.type === 'receita' && d.serviceId ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
+  const salaAmount = d.type === 'receita' && d.serviceId && d.usarSala ? round2(salaFeeAmount(d.amount, ctx.settings)) : 0;
 
   const result = await prisma.$transaction(async (tx) => {
     // restock according to the delta between previous and next sales

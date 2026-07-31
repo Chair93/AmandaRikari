@@ -175,11 +175,13 @@ router.post('/:id/use-session', async (req: AuthedRequest, res) => {
       products,
       'consume'
     );
-    // A package session still happens inside the rented room, so it owes the
-    // room fee like any atendimento — % mode charges over this session's
-    // share of the package price. accrualOnly: the debt accumulates in the
-    // month's bill to the room owner; cash only moves when that's settled.
-    const salaAmount = round2(salaFeeAmount(recognizedAmount, settings!));
+    // A package session in the rented room owes the room fee like any
+    // atendimento — but only when the caller flags it (room use is opt-in
+    // per session). % mode charges over this session's share of the package
+    // price. accrualOnly: the debt accumulates in the month's bill to the
+    // room owner; cash only moves when that's settled.
+    const usarSala = req.body?.usarSala === true;
+    const salaAmount = usarSala ? round2(salaFeeAmount(recognizedAmount, settings!)) : 0;
     if (salaAmount > 0) {
       let scat = await tx.category.findFirst({ where: { businessId: req.businessId, type: 'despesa', name: 'Uso de sala' } });
       if (!scat) scat = await tx.category.create({ data: { businessId: req.businessId!, name: 'Uso de sala', type: 'despesa' } });

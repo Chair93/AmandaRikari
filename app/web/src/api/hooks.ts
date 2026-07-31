@@ -207,6 +207,7 @@ export interface TxInput {
   distanciaKm?: number | null;
   payment?: string | null;
   parcelas?: number | null;
+  usarSala?: boolean;
   appointmentId?: string | null;
   capital?: 'aporte' | 'pagamento' | null;
   capitalKind?: 'capital' | 'emprestimo' | null;
@@ -306,7 +307,7 @@ export function useSavePackage() {
 }
 export function useUsePackageSession() {
   const invalidate = useInvalidateAll();
-  return useMutation({ mutationFn: (id: string) => api.post(`/packages/${id}/use-session`), onSuccess: invalidate });
+  return useMutation({ mutationFn: (input: { id: string; usarSala?: boolean }) => api.post(`/packages/${input.id}/use-session`, { usarSala: !!input.usarSala }), onSuccess: invalidate });
 }
 export function useDeletePackage() {
   const invalidate = useInvalidateAll();

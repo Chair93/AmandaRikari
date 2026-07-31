@@ -696,7 +696,7 @@ function SettingsCard({ settings }: { settings: Settings }) {
           />
         )}
         <span style={{ fontWeight: 500, fontSize: 11 }}>
-          Cada atendimento (inclusive sessão de pacote) soma o valor numa conta a pagar do mês, em nome da dona do espaço, na aba Contas. O custo já conta no resultado do mês; o dinheiro só sai do caixa quando você quitar a conta.
+          Aqui você só cadastra o combinado. Em cada atendimento (e sessão de pacote) aparece a opção "Usei a sala alugada" — só os que você marcar somam o valor numa conta a pagar do mês, em nome da dona do espaço, na aba Contas. O custo já conta no resultado do mês; o dinheiro só sai do caixa quando você quitar a conta.
         </span>
       </div>
       <div className="field">

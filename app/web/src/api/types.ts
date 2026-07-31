@@ -130,6 +130,8 @@ export interface Transaction {
   cashOnly: boolean;
   accrualOnly: boolean;
   packageId: string | null;
+  /** Amount of the room-use fee tied to this atendimento (null = room not used). */
+  salaFee?: number | null;
   items: TxItem[];
   sales: (TxSale & { product?: { name: string } | null })[];
   /** Set on "+ Entrada"/"+ Compra" purchase entries — what was bought. */

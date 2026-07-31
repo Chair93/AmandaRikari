@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import Modal from './Modal';
-import { useClientDetail, useClientPhotos, useDeleteClientPhoto, useDeletePackage, useSettleBill, useUploadClientPhoto, useUsePackageSession, type PhotoTipo } from '../api/hooks';
+import { useClientDetail, useClientPhotos, useDeleteClientPhoto, useDeletePackage, useSettings, useSettleBill, useUploadClientPhoto, useUsePackageSession, type PhotoTipo } from '../api/hooks';
 import { compressImage } from '../imageCompress';
 import { useAuth } from '../auth/AuthContext';
 import { fmtBRL, fmtDateBR } from '../format';
@@ -15,7 +15,15 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   const { data } = useClientDetail(clientId);
   const { isOwner } = useAuth();
   const settle = useSettleBill();
+  const { data: settings } = useSettings();
   const usePkgSession = useUsePackageSession();
+
+  function usarSessao(pkgId: string) {
+    // Room use is opt-in per session — ask only when a room is configured.
+    const salaOn = settings && settings.salaMode !== 'off';
+    const usarSala = salaOn ? window.confirm('Essa sessão foi na sala alugada?\n\nOK — sim, somar o custo da sala no mês\nCancelar — não, sem custo de sala') : false;
+    usePkgSession.mutate({ id: pkgId, usarSala });
+  }
   const deletePkg = useDeletePackage();
   const [subModal, setSubModal] = useState<
     | { kind: 'package' }
@@ -75,7 +83,7 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
                       {(p.restantes || 0) > 0 ? `${p.restantes} restantes` : 'usado'}
                     </span>
                     {isOwner && (p.restantes || 0) > 0 && (
-                      <button className="pill sm" onClick={() => usePkgSession.mutate(p.id)}>
+                      <button className="pill sm" onClick={() => usarSessao(p.id)}>
                         Usar sessão
                       </button>
                     )}
