@@ -104,9 +104,11 @@ export default function ProductModal({
           <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
         </label>
         <label className="field">
-          Avisar estoque baixo em (un)
+          Avisar estoque baixo em (pacotes)
           <input className="input" inputMode="decimal" value={lowStockAt} onChange={(e) => setLowStockAt(e.target.value)} />
-          <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>O alerta aparece quando o estoque chegar neste número.</span>
+          <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-muted)' }}>
+            Em pacotes/potes inteiros, igual ao estoque — ex: 1 = avisar quando sobrar 1 pote. Pode usar fração (0,5 = meio pote).
+          </span>
         </label>
       </div>
       {error && <div className="auth-error">{error}</div>}

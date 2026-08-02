@@ -334,21 +334,32 @@ describe('computeReceitaDiferida', () => {
 // ---------- computeBalanceSheet ----------
 
 describe('computeBalanceSheet', () => {
-  it('reconciles: PL always decomposes into capital + lucros - perdas + realizar + ajuste - receitaDiferida', () => {
-    const products: ProductRow[] = [{ id: 'p1', packageCost: 30, packageQty: 1, avgCost: 30, stock: 100 }];
-    const equipment: EquipmentRow[] = [];
+  it('ajusteConciliar is zero for a healthy ledger with a prepaid package and open fiado', () => {
+    // Aporte funds the caixa; a package paid ahead (1 of 5 sessions delivered)
+    // and a fiado atendimento (R$80 paid now, R$120 open) are normal timing
+    // gaps, not unexplained money — the plug must NOT flag them.
     const packages: PackageRow[] = [{ id: 'pkg1', amount: 500 }];
     const allTx: TxRow[] = [
-      tx({ type: 'receita', amount: 500, date: '2026-06-15', cashOnly: true, packageId: 'pkg1' }),
-      tx({ type: 'receita', amount: 100, date: '2026-07-10', accrualOnly: true, packageId: 'pkg1', serviceId: 'svc', variableCost: 30 }),
-      tx({ type: 'despesa', amount: 50, date: '2026-07-01', categoryId: 'cat' }),
       tx({ type: 'receita', amount: 1000, date: '2026-01-01', capital: 'aporte', capitalKind: 'capital', socio: 'Henrique' }),
+      tx({ type: 'receita', amount: 500, date: '2026-06-15', cashOnly: true, packageId: 'pkg1' }),
+      tx({ type: 'receita', amount: 100, date: '2026-07-10', accrualOnly: true, packageId: 'pkg1' }),
+      tx({ type: 'receita', amount: 200, date: '2026-07-12', accrualOnly: true }), // fiado atendimento (recognized)
+      tx({ type: 'receita', amount: 80, date: '2026-07-12', cashOnly: true, feeOf: 'fiado-main' }), // parte paga na hora
+      tx({ type: 'despesa', amount: 50, date: '2026-07-01', categoryId: 'cat' }),
     ];
-    const balance = computeBalanceSheet({ allTx, products, equipment, categories, packages, aReceberAberto: 200, aPagarAberto: 80 });
-
-    const decomposed = balance.capitalSocios + balance.lucrosAcumulados - balance.perdaBaixas + balance.resultadoARealizar + balance.ajusteConciliar - balance.receitaDiferida;
-    expect(decomposed).toBeCloseTo(balance.plLiquido, 6);
+    const balance = computeBalanceSheet({ allTx, products: [], equipment: [], categories, packages, aReceberAberto: 120, aPagarAberto: 0, fiadoAberto: 120 });
+    expect(balance.ajusteConciliar).toBeCloseTo(0, 6);
     expect(balance.plLiquido).toBeCloseTo(balance.ativoTotal - balance.passivoTotal, 6);
+  });
+
+  it('ajusteConciliar still catches genuinely unexplained cash', () => {
+    // Same ledger but R$300 of cash appears without any story behind it.
+    const allTx: TxRow[] = [
+      tx({ type: 'receita', amount: 1000, date: '2026-01-01', capital: 'aporte', capitalKind: 'capital', socio: 'Henrique' }),
+      tx({ type: 'receita', amount: 300, date: '2026-07-01', cashOnly: true }), // cash-only, no package: nothing explains it
+    ];
+    const balance = computeBalanceSheet({ allTx, products: [], equipment: [], categories, packages: [], aReceberAberto: 0, aPagarAberto: 0, fiadoAberto: 0 });
+    expect(balance.ajusteConciliar).toBeCloseTo(300, 6);
   });
 
   it('excludes accrualOnly recognition from caixa (no double-counting cash already received at sale time)', () => {

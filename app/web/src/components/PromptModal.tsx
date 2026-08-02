@@ -9,8 +9,8 @@ export interface PromptField {
   defaultValue?: string;
   /** 'money'/'qty' validate as numbers > 0; 'count' allows zero (an
    *  inventory count of 0 is honest data); 'text' is free-form; 'select'
-   *  picks from `options`. */
-  kind?: 'money' | 'qty' | 'count' | 'text' | 'select';
+   *  picks from `options`; 'date' is a native date input (YYYY-MM-DD). */
+  kind?: 'money' | 'qty' | 'count' | 'text' | 'select' | 'date';
   options?: { value: string; label: string }[];
   required?: boolean;
 }
@@ -58,6 +58,11 @@ export default function PromptModal({
         out[f.key] = raw;
         continue;
       }
+      if (f.kind === 'date') {
+        if (f.required !== false && raw === '') return setError(`Preencha ${f.label.toLowerCase()}.`);
+        out[f.key] = raw;
+        continue;
+      }
       if (f.kind === 'text') {
         if (f.required !== false && raw === '') return setError(`Preencha ${f.label.toLowerCase()}.`);
         out[f.key] = raw;
@@ -99,7 +104,8 @@ export default function PromptModal({
             ) : (
               <input
                 className="input"
-                inputMode={f.kind === 'text' ? undefined : 'decimal'}
+                type={f.kind === 'date' ? 'date' : undefined}
+                inputMode={f.kind === 'text' || f.kind === 'date' ? undefined : 'decimal'}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={i === 0}
                 value={values[f.key] ?? ''}

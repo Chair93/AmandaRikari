@@ -2,15 +2,34 @@ import { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { useDeleteTransaction, useTransactions } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
-import { fmtBRL, moneyColor, PAYMENT_LABEL } from '../format';
+import { fmtBRL, moneyColor, monthLabelFromOffset, PAYMENT_LABEL } from '../format';
 import TransactionModal from '../components/TransactionModal';
 
 type Filter = 'all' | 'receita' | 'despesa';
 
+/** First/last day of the month `offset` months from now (local time). */
+function monthRange(offset: number): { from: string; to: string } {
+  const base = new Date();
+  const y = base.getFullYear();
+  const m = base.getMonth() + offset;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const first = new Date(y, m, 1);
+  const last = new Date(y, m + 1, 0);
+  return {
+    from: `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`,
+    to: `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`,
+  };
+}
+
 export default function Lancamentos() {
   const { isOwner } = useAuth();
   const [filter, setFilter] = useState<Filter>('all');
-  const { data: transactions = [] } = useTransactions({ type: filter });
+  // One month at a time by default — after a few months of use the full
+  // history is way too long to scroll (and to fetch on the phone).
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [tudo, setTudo] = useState(false);
+  const range = monthRange(monthOffset);
+  const { data: transactions = [] } = useTransactions({ type: filter, ...(tudo ? {} : range) });
   const deleteTx = useDeleteTransaction();
   const [txModal, setTxModal] = useState<{ open: boolean; id?: string }>({ open: false });
 
@@ -47,7 +66,7 @@ export default function Lancamentos() {
       />
       <div className="scroll-area">
         <div className="page">
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button className={'pill' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>
               Todos
             </button>
@@ -56,6 +75,27 @@ export default function Lancamentos() {
             </button>
             <button className={'pill' + (filter === 'despesa' ? ' active expense' : '')} onClick={() => setFilter('despesa')}>
               Despesas
+            </button>
+            <span style={{ flex: 1 }} />
+            {!tudo && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                <button className="pill" aria-label="Mês anterior" onClick={() => setMonthOffset((o) => o - 1)}>
+                  ‹
+                </button>
+                <span style={{ fontSize: 12.5, fontWeight: 600, textTransform: 'capitalize', minWidth: 122, textAlign: 'center' }}>{monthLabelFromOffset(monthOffset)}</span>
+                <button className="pill" aria-label="Próximo mês" disabled={monthOffset >= 0} style={monthOffset >= 0 ? { opacity: 0.35 } : undefined} onClick={() => setMonthOffset((o) => Math.min(0, o + 1))}>
+                  ›
+                </button>
+              </span>
+            )}
+            <button
+              className={'pill' + (tudo ? ' active' : '')}
+              onClick={() => {
+                setTudo((t) => !t);
+                setMonthOffset(0);
+              }}
+            >
+              {tudo ? 'Vendo tudo' : 'Ver tudo'}
             </button>
           </div>
 

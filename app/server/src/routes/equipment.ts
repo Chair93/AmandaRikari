@@ -81,16 +81,23 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   res.json(row);
 });
 
-/** Flip the switch: a general asset starts depreciating monthly from today.
+/** Flip the switch: a general asset starts depreciating monthly. `desde`
+ *  backdates the start (asset bought months before the app knew about it) —
+ *  the generator books the missed months right away.
  *  Runs the generator right away so the current month posts immediately. */
+const ativarSchema = z.object({ desde: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 router.post('/:id/ativar', async (req: AuthedRequest, res) => {
+  const parsedAtivar = ativarSchema.safeParse(req.body ?? {});
+  if (!parsedAtivar.success) return res.status(400).json({ error: parsedAtivar.error.issues[0]?.message });
   const existing = await prisma.equipment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   if (existing.depMode !== 'tempo') return res.status(400).json({ error: 'Este bem deprecia pelo uso — ativação só vale pra ativos gerais (por tempo).' });
   if (existing.vidaMeses <= 0) return res.status(400).json({ error: 'Cadastre a vida útil (meses) antes de ativar.' });
   if (existing.qty <= 0) return res.status(400).json({ error: 'Dê entrada nas unidades (+ Compra) antes de ativar a depreciação.' });
   if (existing.ativadoEm) return res.status(400).json({ error: 'Depreciação já ativada.' });
-  const row = await prisma.equipment.update({ where: { id: existing.id }, data: { ativadoEm: todayStr() } });
+  const desde = parsedAtivar.data.desde;
+  if (desde && desde > todayStr()) return res.status(400).json({ error: 'A data de início não pode ser no futuro.' });
+  const row = await prisma.equipment.update({ where: { id: existing.id }, data: { ativadoEm: desde || todayStr() } });
   await ensureDepreciationGenerated(req.businessId!);
   res.json(row);
 });
@@ -110,7 +117,7 @@ router.delete('/:id', async (req: AuthedRequest, res) => {
 });
 
 /** "+ Compra" — buying more units is an asset purchase (investment), not an operating expense. */
-const comprarSchema = z.object({ qty: z.number().gt(0), unitCost: z.number().min(0) });
+const comprarSchema = z.object({ qty: z.number().gt(0), unitCost: z.number().min(0), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 router.post('/:id/comprar', async (req: AuthedRequest, res) => {
   const parsed = comprarSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -128,7 +135,7 @@ router.post('/:id/comprar', async (req: AuthedRequest, res) => {
         type: 'despesa',
         amount: qty * unitCost,
         categoryId: cat.id,
-        date: todayStr(),
+        date: parsed.data.date || todayStr(),
         ativo: true,
         equipmentId: eq.id,
         note: `Compra de bem: ${eq.name} x${qty}`,

@@ -300,11 +300,14 @@ export default function Dashboard() {
         <PromptModal
           title="Retirar pró-labore"
           description={`Lucro dos atendimentos no mês: ${fmtBRL(data.prolabore.base)} · Sugerido (${data.prolabore.mode === 'fixo' ? 'valor fixo' : data.prolabore.pct + '% do lucro'}): ${fmtBRL(data.prolabore.amount)} · Já retirado: ${fmtBRL(data.prolabore.retirado)}`}
-          fields={[{ key: 'amount', label: 'Quanto retirar (R$)', defaultValue: String(sugeridoProlabore).replace('.', ','), kind: 'money' }]}
+          fields={[
+            { key: 'amount', label: 'Quanto retirar (R$)', defaultValue: String(sugeridoProlabore).replace('.', ','), kind: 'money' },
+            { key: 'date', label: 'Data da retirada', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) },
+          ]}
           confirmLabel="Retirar"
           onCancel={() => setProlaboreOpen(false)}
           onConfirm={async (v) => {
-            await sacar.mutateAsync(v.amount as number);
+            await sacar.mutateAsync({ amount: v.amount as number, date: (v.date as string) || undefined });
             setProlaboreOpen(false);
           }}
         />

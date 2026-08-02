@@ -18,11 +18,12 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
   const { data: settings } = useSettings();
   const usePkgSession = useUsePackageSession();
 
+  // Which package is getting a session registered (opens the small form:
+  // date + room). Room use is opt-in per session, asked only when configured.
+  const [sessaoDe, setSessaoDe] = useState<string | null>(null);
+  const salaOn = !!settings && settings.salaMode !== 'off';
   function usarSessao(pkgId: string) {
-    // Room use is opt-in per session — ask only when a room is configured.
-    const salaOn = settings && settings.salaMode !== 'off';
-    const usarSala = salaOn ? window.confirm('Essa sessão foi na sala alugada?\n\nOK — sim, somar o custo da sala no mês\nCancelar — não, sem custo de sala') : false;
-    usePkgSession.mutate({ id: pkgId, usarSala });
+    setSessaoDe(pkgId);
   }
   const deletePkg = useDeletePackage();
   const [subModal, setSubModal] = useState<
@@ -203,6 +204,22 @@ export default function ClientDetailModal({ clientId, onClose }: { clientId: str
         </div>
       </Modal>
 
+      {sessaoDe && (
+        <PromptModal
+          title="Usar sessão do pacote"
+          description="A sessão entra no resultado do dia escolhido, com a ficha técnica baixando o estoque."
+          fields={[
+            { key: 'date', label: 'Data da sessão', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) },
+            ...(salaOn ? [{ key: 'sala', label: 'Foi na sala alugada?', kind: 'select' as const, defaultValue: 'nao', options: [{ value: 'nao', label: 'Não' }, { value: 'sim', label: 'Sim — somar o custo da sala no mês' }] }] : []),
+          ]}
+          confirmLabel="Registrar sessão"
+          onCancel={() => setSessaoDe(null)}
+          onConfirm={async (v) => {
+            await usePkgSession.mutateAsync({ id: sessaoDe, usarSala: v.sala === 'sim', date: (v.date as string) || undefined });
+            setSessaoDe(null);
+          }}
+        />
+      )}
       {subModal?.kind === 'package' && <PackageModal onClose={() => setSubModal(null)} defaultClientId={clientId} />}
       {subModal?.kind === 'bill' && <BillModal onClose={() => setSubModal(null)} defaultKind="receber" defaultClientId={clientId} />}
       {subModal?.kind === 'editBill' && <BillModal onClose={() => setSubModal(null)} editingBill={subModal.bill} />}

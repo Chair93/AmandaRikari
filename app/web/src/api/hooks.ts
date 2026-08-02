@@ -98,35 +98,35 @@ export function useProductDeleteImpact(id: string | null) {
 export function useProductDiferencaCusto() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id: string; valor: number; lancarNoCaixa?: boolean }) => api.post(`/products/${input.id}/diferenca-custo`, input),
+    mutationFn: (input: { id: string; valor: number; lancarNoCaixa?: boolean; date?: string }) => api.post(`/products/${input.id}/diferenca-custo`, input),
     onSuccess: invalidate,
   });
 }
 export function useProductConsumoInterno() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id: string; qty: number; brinde?: boolean }) => api.post(`/products/${input.id}/consumo-interno`, input),
+    mutationFn: (input: { id: string; qty: number; brinde?: boolean; date?: string }) => api.post(`/products/${input.id}/consumo-interno`, input),
     onSuccess: invalidate,
   });
 }
 export function useProductEntrada() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id: string; qty: number; unitCost: number; lancarNoCaixa?: boolean }) => api.post(`/products/${input.id}/entrada`, input),
+    mutationFn: (input: { id: string; qty: number; unitCost: number; lancarNoCaixa?: boolean; date?: string }) => api.post(`/products/${input.id}/entrada`, input),
     onSuccess: invalidate,
   });
 }
 export function useProductVender() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id: string; qty: number; unitPrice: number }) => api.post(`/products/${input.id}/vender`, input),
+    mutationFn: (input: { id: string; qty: number; unitPrice: number; date?: string }) => api.post(`/products/${input.id}/vender`, input),
     onSuccess: invalidate,
   });
 }
 export function useProductInventario() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id: string; real: number; note?: string }) => api.post(`/products/${input.id}/inventario`, input),
+    mutationFn: (input: { id: string; real: number; note?: string; date?: string }) => api.post(`/products/${input.id}/inventario`, input),
     onSuccess: invalidate,
   });
 }
@@ -156,11 +156,11 @@ export function useEquipmentDeleteImpact(id: string | null) {
 }
 export function useEquipmentAtivar() {
   const invalidate = useInvalidateAll();
-  return useMutation({ mutationFn: (id: string) => api.post(`/equipment/${id}/ativar`), onSuccess: invalidate });
+  return useMutation({ mutationFn: (input: { id: string; desde?: string }) => api.post(`/equipment/${input.id}/ativar`, input.desde ? { desde: input.desde } : {}), onSuccess: invalidate });
 }
 export function useEquipmentComprar() {
   const invalidate = useInvalidateAll();
-  return useMutation({ mutationFn: (input: { id: string; qty: number; unitCost: number }) => api.post(`/equipment/${input.id}/comprar`, input), onSuccess: invalidate });
+  return useMutation({ mutationFn: (input: { id: string; qty: number; unitCost: number; date?: string }) => api.post(`/equipment/${input.id}/comprar`, input), onSuccess: invalidate });
 }
 export function useEquipmentBaixa() {
   const invalidate = useInvalidateAll();
@@ -271,7 +271,7 @@ export function useDeleteTransaction() {
 }
 export function useSacarProlabore() {
   const invalidate = useInvalidateAll();
-  return useMutation({ mutationFn: (amount: number) => api.post('/transactions/sacar-prolabore', { amount }), onSuccess: invalidate });
+  return useMutation({ mutationFn: (input: { amount: number; date?: string }) => api.post('/transactions/sacar-prolabore', input), onSuccess: invalidate });
 }
 
 // ---------- Bills ----------
@@ -333,6 +333,7 @@ export interface PackageInput {
   /** Credit-card installments on an à-vista sale (fee table lookup). */
   parcelasCartao?: number;
   primeiroVenc?: string;
+  date?: string;
 }
 export function useSavePackage() {
   const invalidate = useInvalidateAll();
@@ -340,7 +341,7 @@ export function useSavePackage() {
 }
 export function useUsePackageSession() {
   const invalidate = useInvalidateAll();
-  return useMutation({ mutationFn: (input: { id: string; usarSala?: boolean }) => api.post(`/packages/${input.id}/use-session`, { usarSala: !!input.usarSala }), onSuccess: invalidate });
+  return useMutation({ mutationFn: (input: { id: string; usarSala?: boolean; date?: string }) => api.post(`/packages/${input.id}/use-session`, { usarSala: !!input.usarSala, ...(input.date ? { date: input.date } : {}) }), onSuccess: invalidate });
 }
 export function useDeletePackage() {
   const invalidate = useInvalidateAll();

@@ -713,6 +713,11 @@ a {
   background: var(--warning-soft);
   color: var(--warning-text);
 }
+.badge.danger {
+  background: var(--expense-soft);
+  color: var(--expense-text);
+  border: 1px solid var(--expense-text);
+}
 
 /* Visually hidden but still announced by screen readers. */
 .sr-only {

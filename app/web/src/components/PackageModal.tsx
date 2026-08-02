@@ -22,6 +22,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
   const [parcelas, setParcelas] = useState('3');
   const [parcelasCartao, setParcelasCartao] = useState(1);
   const [primeiroVenc, setPrimeiroVenc] = useState(todayStr());
+  const [date, setDate] = useState(todayStr());
   const [error, setError] = useState<string | null>(null);
 
   const n = Math.round(numOr0(sessions));
@@ -70,6 +71,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         parcelas: mode === 'prazo' ? Math.max(1, Math.round(numOr0(parcelas))) : undefined,
         parcelasCartao: mode === 'avista' && payment === 'credito' ? parcelasCartao : undefined,
         primeiroVenc: mode === 'prazo' ? primeiroVenc : undefined,
+        date: date || undefined,
       });
       onClose();
     } catch (e) {
@@ -118,6 +120,10 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         <label className="field">
           Valor total (R$)
           <input className="input" inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </label>
+        <label className="field">
+          Data da venda
+          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
       <div className="field">

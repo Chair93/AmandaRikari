@@ -547,14 +547,14 @@ router.post('/:id/devolver', async (req: AuthedRequest, res) => {
   res.status(201).json(row);
 });
 
-const sacarSchema = z.object({ amount: z.number().gt(0) });
+const sacarSchema = z.object({ amount: z.number().gt(0), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
 router.post('/sacar-prolabore', async (req: AuthedRequest, res) => {
   const parsed = sacarSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
   const businessId = req.businessId!;
   const cat = await findOrCreateCategory(businessId, 'Pró-labore', 'despesa');
   const row = await prisma.transaction.create({
-    data: { businessId, type: 'despesa', amount: parsed.data.amount, categoryId: cat.id, date: todayStr(), prolabore: true, note: 'Pró-labore' },
+    data: { businessId, type: 'despesa', amount: parsed.data.amount, categoryId: cat.id, date: parsed.data.date || todayStr(), prolabore: true, note: 'Pró-labore' },
     include: TX_INCLUDE,
   });
   res.status(201).json(row);

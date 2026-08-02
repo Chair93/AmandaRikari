@@ -71,7 +71,13 @@ function EstoqueRow({ p }: { p: Product }) {
         </div>
       </div>
       <div className="row-stats">
-        {p.stock <= p.lowStockAt && <span className="badge warning">estoque baixo</span>}
+        {p.stock < -0.005 ? (
+          <span className="badge danger" title="Os atendimentos usaram mais do que você comprou — faça uma Contagem pra acertar.">
+            estoque negativo
+          </span>
+        ) : (
+          p.stock <= p.lowStockAt && <span className="badge warning">estoque baixo</span>
+        )}
         <ExpiryBadge expiresAt={p.expiresAt} />
         <span style={{ fontSize: 14, fontWeight: 700 }} title={p.unit !== 'unidade' ? `≈ ${Math.round(p.stock * p.packageQty)} ${UNIT_LABEL[p.unit] || p.unit} no total` : undefined}>
           {fmtUn(p.stock)} un
@@ -134,13 +140,14 @@ function EstoqueRow({ p }: { p: Product }) {
           fields={[
             { key: 'qty', label: 'Quantos pacotes entraram', defaultValue: '1', kind: 'qty' },
             { key: 'unitCost', label: 'Custo de cada pacote (R$)', defaultValue: String(p.packageCost).replace('.', ','), kind: 'money' },
+            { key: 'date', label: 'Data da compra', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) },
           ]}
           checkboxLabel="Lançar também como saída no caixa (compra)"
           checkboxDefault
           confirmLabel="Dar entrada"
           onCancel={() => setPrompt(null)}
           onConfirm={async (v, lancarNoCaixa) => {
-            await entrada.mutateAsync({ id: p.id, qty: v.qty as number, unitCost: v.unitCost as number, lancarNoCaixa });
+            await entrada.mutateAsync({ id: p.id, qty: v.qty as number, unitCost: v.unitCost as number, lancarNoCaixa, date: (v.date as string) || undefined });
             setPrompt(null);
           }}
         />
@@ -202,13 +209,14 @@ function EstoqueRow({ p }: { p: Product }) {
           fields={[
             { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty', hint: `Máximo ${fmtUn(p.stock)}` },
             { key: 'unitPrice', label: 'Preço de venda por unidade (R$)', defaultValue: String(p.salePrice || p.packageCost).replace('.', ','), kind: 'money' },
+            { key: 'date', label: 'Data da venda', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) },
           ]}
           confirmLabel="Registrar venda"
           onCancel={() => setPrompt(null)}
           onConfirm={async (v) => {
             const qty = v.qty as number;
             if (qty > p.stock) throw new Error(`Você só tem ${p.stock} un em estoque.`);
-            await vender.mutateAsync({ id: p.id, qty, unitPrice: v.unitPrice as number });
+            await vender.mutateAsync({ id: p.id, qty, unitPrice: v.unitPrice as number, date: (v.date as string) || undefined });
             setPrompt(null);
           }}
         />
@@ -226,7 +234,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: impact, isPending: impactPending } = useEquipmentDeleteImpact(confirmDelete ? eq.id : null);
-  const [prompt, setPrompt] = useState<'compra' | 'baixa' | null>(null);
+  const [prompt, setPrompt] = useState<'compra' | 'baixa' | 'ativar' | null>(null);
   const isMaq = (eq.kind || (eq.kwh > 0 ? 'maquina' : 'utensilio')) === 'maquina';
   const q = eq.qty;
   const usos = eq.usos || 0;
@@ -282,10 +290,7 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
             <button
               className="pill sm accent"
               style={{ color: 'var(--on-accent, white)', background: 'var(--accent)' }}
-              onClick={() =>
-                window.confirm(`Ativar a depreciação de ${eq.name}?\n\nA partir de hoje o app lança ${fmtBRL(depMensal)} por mês no resultado, durante ${vidaMeses} meses. Não mexe no caixa.`) &&
-                ativar.mutate(eq.id)
-              }
+              onClick={() => setPrompt('ativar')}
             >
               ▶ Ativar
             </button>
@@ -326,11 +331,26 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
           fields={[
             { key: 'qty', label: 'Quantas unidades', defaultValue: '1', kind: 'qty' },
             { key: 'unitCost', label: 'Preço pago por unidade (R$)', defaultValue: String(eq.cost).replace('.', ','), kind: 'money' },
+            { key: 'date', label: 'Data da compra', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) },
           ]}
           confirmLabel="Registrar compra"
           onCancel={() => setPrompt(null)}
           onConfirm={async (v) => {
-            await comprar.mutateAsync({ id: eq.id, qty: v.qty as number, unitCost: v.unitCost as number });
+            await comprar.mutateAsync({ id: eq.id, qty: v.qty as number, unitCost: v.unitCost as number, date: (v.date as string) || undefined });
+            setPrompt(null);
+          }}
+        />
+      )}
+
+      {prompt === 'ativar' && (
+        <PromptModal
+          title={`Ativar depreciação — ${eq.name}`}
+          description={`O app lança ${fmtBRL(depMensal)} por mês no resultado, durante ${vidaMeses} meses, sem mexer no caixa. Se o bem já está em uso há um tempo, informe a data em que começou — os meses passados entram de uma vez.`}
+          fields={[{ key: 'desde', label: 'Em uso desde', kind: 'date', defaultValue: new Date().toISOString().slice(0, 10) }]}
+          confirmLabel="▶ Ativar"
+          onCancel={() => setPrompt(null)}
+          onConfirm={async (v) => {
+            await ativar.mutateAsync({ id: eq.id, desde: (v.desde as string) || undefined });
             setPrompt(null);
           }}
         />

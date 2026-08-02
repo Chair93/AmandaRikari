@@ -302,8 +302,11 @@ export function computeBalanceSheet(params: {
   packages: PackageRow[];
   aReceberAberto: number;
   aPagarAberto: number;
+  /** Open receivables that are recognized fiado (bills with fiadoOf) —
+   *  needed so the funding check doesn't flag them as missing cash. */
+  fiadoAberto?: number;
 }): BalanceSheet {
-  const { allTx, products, equipment, categories, packages, aReceberAberto, aPagarAberto } = params;
+  const { allTx, products, equipment, categories, packages, aReceberAberto, aPagarAberto, fiadoAberto = 0 } = params;
   const caixa = allTx.reduce((a, t) => a + cashDelta(t), 0);
   const estoque = products.reduce((a, p) => a + numOr0(p.stock) * (numOr0(p.avgCost) || numOr0(p.packageCost)), 0);
   const usos = equipmentUsageCounts(allTx.flatMap((t) => t.items));
@@ -358,7 +361,29 @@ export function computeBalanceSheet(params: {
   const passivoTotal = aPagarAberto + emprestimoSocios + receitaDiferida;
   const plLiquido = ativoTotal - passivoTotal;
   const resultadoARealizar = aReceberAberto - aPagarAberto;
-  const ajusteConciliar = ativoOperacional - aportesTotal - (lucrosAcumulados - perdaBaixas) - provisoesEmAberto;
+  // Prepaid package money that arrived before its sessions were delivered:
+  // cash sits in the caixa but lucros only grow session by session. Without
+  // netting it out, every package sold ahead reads as unexplained cash.
+  // Per package, capped at zero — a package with more sessions delivered
+  // than cash received (a prazo) is the fiado side's business, not this one.
+  const cashInByPackage: Record<string, number> = {};
+  const recByPackage: Record<string, number> = {};
+  for (const t of allTx) {
+    if (!t.packageId) continue;
+    if (t.type === 'receita' && t.cashOnly) cashInByPackage[t.packageId] = (cashInByPackage[t.packageId] || 0) + t.amount;
+    if (t.type === 'receita' && t.accrualOnly) recByPackage[t.packageId] = (recByPackage[t.packageId] || 0) + t.amount;
+  }
+  const caixaAdiantadoPacotes = Object.keys(cashInByPackage).reduce(
+    (a, id) => a + Math.max(0, cashInByPackage[id] - (recByPackage[id] || 0)),
+    0
+  );
+  // The funding check: operational assets must be explained by contributions
+  // + accumulated profit + accrued-unpaid provisions. Two timing legs are
+  // netted out: package cash received ahead of delivery (asset without
+  // profit yet) and recognized fiado still open (profit whose asset lives
+  // in aReceber, outside ativoOperacional).
+  const ajusteConciliar =
+    ativoOperacional - aportesTotal - (lucrosAcumulados - perdaBaixas) - provisoesEmAberto - caixaAdiantadoPacotes + fiadoAberto;
   const caixaProjetado = caixa + aReceberAberto - aPagarAberto;
 
   return {

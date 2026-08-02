@@ -154,7 +154,19 @@ export function buildAlerts(data: Awaited<ReturnType<typeof loadAll>>) {
   data.products
     .filter((p) => numOr0(p.stock) <= numOr0((p as { lowStockAt?: number }).lowStockAt ?? 1))
     .slice(0, 4)
-    .forEach((p) => alerts.push({ id: 'e' + p.id, kind: 'stock', overdue: false, text: `Estoque baixo: ${p.name} (${numOr0(p.stock)} un)` }));
+    .forEach((p) => {
+      const negativo = numOr0(p.stock) < -0.005;
+      alerts.push({
+        id: 'e' + p.id,
+        kind: 'stock',
+        // Negative stock means the fichas consumed more than was ever bought
+        // — the books are wrong until a Contagem fixes them, so shout.
+        overdue: negativo,
+        text: negativo
+          ? `Estoque NEGATIVO: ${p.name} (${numOr0(p.stock)} un) — os atendimentos usaram mais do que você comprou. Faça uma Contagem no Estoque pra acertar.`
+          : `Estoque baixo: ${p.name} (${numOr0(p.stock)} un)`,
+      });
+    });
   // Booked-but-not-buyable: the agenda's next 30 days consume more of a
   // product than the shelf holds — warn before the client is in the chair.
   previsaoEstoque(data)
@@ -349,6 +361,7 @@ router.get('/resultado', async (req: AuthedRequest, res) => {
 
   const aReceberAberto = data.bills.filter((b) => !b.settled && b.kind === 'receber').reduce((a, b) => a + b.amount, 0);
   const aPagarAberto = data.bills.filter((b) => !b.settled && b.kind === 'pagar').reduce((a, b) => a + b.amount, 0);
+  const fiadoAberto = data.bills.filter((b) => !b.settled && b.kind === 'receber' && b.fiadoOf).reduce((a, b) => a + b.amount, 0);
   const balance = computeBalanceSheet({
     allTx: data.transactions,
     products: data.products,
@@ -357,6 +370,7 @@ router.get('/resultado', async (req: AuthedRequest, res) => {
     packages: data.packages,
     aReceberAberto,
     aPagarAberto,
+    fiadoAberto,
   });
 
   const despPorAtend = dre.atendCount > 0 ? (dre.desp + dre.prolabore) / dre.atendCount : 0;
@@ -381,6 +395,7 @@ router.get('/contas', async (req: AuthedRequest, res) => {
   const data = await loadAll(businessId);
   const aReceberAberto = data.bills.filter((b) => !b.settled && b.kind === 'receber').reduce((a, b) => a + b.amount, 0);
   const aPagarAberto = data.bills.filter((b) => !b.settled && b.kind === 'pagar').reduce((a, b) => a + b.amount, 0);
+  const fiadoAberto = data.bills.filter((b) => !b.settled && b.kind === 'receber' && b.fiadoOf).reduce((a, b) => a + b.amount, 0);
   const balance = computeBalanceSheet({
     allTx: data.transactions,
     products: data.products,
@@ -389,6 +404,7 @@ router.get('/contas', async (req: AuthedRequest, res) => {
     packages: data.packages,
     aReceberAberto,
     aPagarAberto,
+    fiadoAberto,
   });
   const abertas = data.bills.filter((b) => !b.settled);
   res.json({
@@ -595,7 +611,7 @@ router.get('/export/balanco.csv', async (req: AuthedRequest, res) => {
   const data = await loadAll(businessId);
   const aReceberAberto = data.bills.filter((b) => !b.settled && b.kind === 'receber').reduce((a, b) => a + b.amount, 0);
   const aPagarAberto = data.bills.filter((b) => !b.settled && b.kind === 'pagar').reduce((a, b) => a + b.amount, 0);
-  const balance = computeBalanceSheet({ allTx: data.transactions, products: data.products, equipment: data.equipment, categories: data.categories, packages: data.packages, aReceberAberto, aPagarAberto });
+  const balance = computeBalanceSheet({ allTx: data.transactions, products: data.products, equipment: data.equipment, categories: data.categories, packages: data.packages, aReceberAberto, aPagarAberto, fiadoAberto: data.bills.filter((b) => !b.settled && b.kind === 'receber' && b.fiadoOf).reduce((a, b) => a + b.amount, 0) });
   sendCsv(res, `rikari-balanco-${todayStr()}.csv`, [
     ['Balanco simplificado', todayStr()].join(';'),
     ['ATIVO', ''].join(';'),

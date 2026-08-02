@@ -85,7 +85,8 @@ router.delete('/:id', async (req: AuthedRequest, res) => {
 });
 
 /** Estoque "+Entrada" — records a new batch of stock, updates the weighted-average cost. */
-const entradaSchema = z.object({ qty: z.number().gt(0), unitCost: z.number().min(0), lancarNoCaixa: z.boolean().optional() });
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
+const entradaSchema = z.object({ qty: z.number().gt(0), unitCost: z.number().min(0), lancarNoCaixa: z.boolean().optional(), date: dateSchema });
 router.post('/:id/entrada', async (req: AuthedRequest, res) => {
   const parsed = entradaSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -110,7 +111,7 @@ router.post('/:id/entrada', async (req: AuthedRequest, res) => {
           type: 'despesa',
           amount: qty * unitCost,
           categoryId: cat.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: parsed.data.date || new Date().toISOString().slice(0, 10),
           estoque: true,
           productId: p.id,
           note: `Compra de estoque: ${p.name} x${qty}`,
@@ -125,7 +126,7 @@ router.post('/:id/entrada', async (req: AuthedRequest, res) => {
 /** "Débito posterior": the supplier ended up charging more than the entrada
  *  recorded. The difference spreads over the CURRENT stock, correcting the
  *  weighted average cost; optionally the extra payment also leaves the caixa. */
-const diferencaSchema = z.object({ valor: z.number().gt(0), lancarNoCaixa: z.boolean().optional() });
+const diferencaSchema = z.object({ valor: z.number().gt(0), lancarNoCaixa: z.boolean().optional(), date: dateSchema });
 router.post('/:id/diferenca-custo', async (req: AuthedRequest, res) => {
   const parsed = diferencaSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -151,7 +152,7 @@ router.post('/:id/diferenca-custo', async (req: AuthedRequest, res) => {
           type: 'despesa',
           amount: valor,
           categoryId: cat.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: parsed.data.date || new Date().toISOString().slice(0, 10),
           estoque: true,
           productId: p.id,
           note: `Diferença de custo: ${p.name}`,
@@ -166,7 +167,7 @@ router.post('/:id/diferenca-custo', async (req: AuthedRequest, res) => {
 /** Gift or in-house use: stock goes down and the cost hits the month's
  *  result under its own label — no cash moves, and it doesn't pollute the
  *  'Perda de inventário' history that powers the ficha-técnica suggestions. */
-const consumoInternoSchema = z.object({ qty: z.number().gt(0), brinde: z.boolean().optional() });
+const consumoInternoSchema = z.object({ qty: z.number().gt(0), brinde: z.boolean().optional(), date: dateSchema });
 router.post('/:id/consumo-interno', async (req: AuthedRequest, res) => {
   const parsed = consumoInternoSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -184,7 +185,7 @@ router.post('/:id/consumo-interno', async (req: AuthedRequest, res) => {
         type: 'despesa',
         amount: custo,
         categoryId: cat.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: parsed.data.date || new Date().toISOString().slice(0, 10),
         accrualOnly: true,
         productId: p.id,
         note: `${brinde ? 'Brinde' : 'Uso interno'}: ${p.name} x${qty}`,
@@ -196,7 +197,7 @@ router.post('/:id/consumo-interno', async (req: AuthedRequest, res) => {
 });
 
 /** Estoque "Vender" — sells stock directly (not tied to an appointment), records revenue + margin. */
-const venderSchema = z.object({ qty: z.number().gt(0), unitPrice: z.number().gt(0) });
+const venderSchema = z.object({ qty: z.number().gt(0), unitPrice: z.number().gt(0), date: dateSchema });
 router.post('/:id/vender', async (req: AuthedRequest, res) => {
   const parsed = venderSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -216,7 +217,7 @@ router.post('/:id/vender', async (req: AuthedRequest, res) => {
         type: 'receita',
         amount: qty * unitPrice,
         categoryId: cat.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: parsed.data.date || new Date().toISOString().slice(0, 10),
         variableCost: 0,
         note: `Venda: ${p.name} x${qty}`,
         sales: { create: [{ productId: p.id, qty, unitPrice, unitCost }] },
@@ -232,7 +233,7 @@ router.post('/:id/vender', async (req: AuthedRequest, res) => {
  *  result: a shortfall as 'Perda de inventário' (despesa), a surplus as
  *  'Ganho de inventário' (receita). Both are accrualOnly — no cash moved,
  *  the shelf just didn't match the books. */
-const inventarioSchema = z.object({ real: z.number().min(0), note: z.string().max(200).optional() });
+const inventarioSchema = z.object({ real: z.number().min(0), note: z.string().max(200).optional(), date: dateSchema });
 router.post('/:id/inventario', async (req: AuthedRequest, res) => {
   const parsed = inventarioSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
@@ -260,7 +261,7 @@ router.post('/:id/inventario', async (req: AuthedRequest, res) => {
           type,
           amount: value,
           categoryId: cat.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: parsed.data.date || new Date().toISOString().slice(0, 10),
           accrualOnly: true,
           productId: p.id,
           note: `Ajuste de inventário: ${p.name} (${p.stock} → ${real})${note?.trim() ? ' — ' + note.trim() : ''}`,
