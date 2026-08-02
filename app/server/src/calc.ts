@@ -30,6 +30,8 @@ export type TxRow = {
   packageId: string | null;
   /** Set on purchases and inventory adjustments — which product it concerns. */
   productId?: string | null;
+  /** Set on asset purchases and monthly depreciation entries. */
+  equipmentId?: string | null;
   items: TxItem[];
   sales: TxSale[];
 };
@@ -45,6 +47,8 @@ export type EquipmentRow = {
   usefulUses: number;
   kwh: number;
   perdaBaixa: number;
+  /** 'uso' (per-atendimento) or 'tempo' (monthly bookings). */
+  depMode?: string;
 };
 export type CategoryRow = { id: string; type: string; investment: boolean };
 export type SettingsRow = {
@@ -304,7 +308,10 @@ export function computeBalanceSheet(params: {
   const estoque = products.reduce((a, p) => a + numOr0(p.stock) * (numOr0(p.avgCost) || numOr0(p.packageCost)), 0);
   const usos = equipmentUsageCounts(allTx.flatMap((t) => t.items));
   const equipBruto = equipment.reduce((a, eq) => a + numOr0(eq.cost) * numOr0(eq.qty), 0);
-  const depreciacao = equipment.reduce((a, eq) => a + equipmentDepreciation(eq, usos[eq.id] || 0), 0);
+  // Time-based assets depreciate by their booked monthly entries; use-based
+  // ones by the ficha-técnica usage count — never both.
+  const depTempo = allTx.filter((t) => t.type === 'despesa' && t.accrualOnly && t.equipmentId).reduce((a, t) => a + t.amount, 0);
+  const depreciacao = equipment.reduce((a, eq) => a + (eq.depMode === 'tempo' ? 0 : equipmentDepreciation(eq, usos[eq.id] || 0)), 0) + depTempo;
   const equipAtivo = equipBruto - depreciacao;
   const perdaBaixas = equipment.reduce((a, eq) => a + numOr0(eq.perdaBaixa), 0);
 

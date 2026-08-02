@@ -4,6 +4,7 @@ import {
   useDeleteEquipment,
   useDeleteProduct,
   useEquipment,
+  useEquipmentAtivar,
   useEquipmentBaixa,
   useEquipmentComprar,
   useEquipmentDeleteImpact,
@@ -219,6 +220,7 @@ function EstoqueRow({ p }: { p: Product }) {
 function EquipmentRow({ eq }: { eq: Equipment }) {
   const { isOwner } = useAuth();
   const comprar = useEquipmentComprar();
+  const ativar = useEquipmentAtivar();
   const baixa = useEquipmentBaixa();
   const del = useDeleteEquipment();
   const [editing, setEditing] = useState(false);
@@ -234,6 +236,11 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
   const bruto = eq.cost * q;
   const residual = Math.max(0, bruto - (eq.depreciacaoAcumulada || 0));
   const perUse = eq.usefulUses > 0 ? eq.cost / eq.usefulUses : 0;
+  // General assets (mirror, furniture) tick monthly once activated.
+  const porTempo = eq.depMode === 'tempo';
+  const vidaMeses = eq.vidaMeses || 0;
+  const depMensal = porTempo && vidaMeses > 0 ? bruto / vidaMeses : 0;
+  const depPctTempo = bruto > 0 ? Math.min(100, Math.round(((eq.depreciacaoAcumulada || 0) / bruto) * 100)) : 0;
 
   return (
     <div className="list-row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', rowGap: 10 }}>
@@ -250,14 +257,18 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
           {q === 0 ? 'cadastrado — dê entrada com + Compra' : `${q} ${q === 1 ? 'unidade' : 'unidades'} · ${fmtBRL(bruto)} em ativo`}
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
-          {fmtBRL(perUse)} depreciação/uso · {eq.usefulUses} usos por unidade{isMaq && eq.kwh > 0 ? ` + ${String(eq.kwh).replace('.', ',')} kWh/hora` : ''}
+          {porTempo
+            ? eq.ativadoEm
+              ? `Ativo geral · deprecia ${fmtBRL(depMensal)}/mês por ${vidaMeses} meses (desde ${eq.ativadoEm.slice(8, 10)}/${eq.ativadoEm.slice(5, 7)}/${eq.ativadoEm.slice(0, 4)})`
+              : `Ativo geral · vida útil ${vidaMeses} meses (${fmtBRL(depMensal)}/mês) — ainda não ativado`
+            : `${fmtBRL(perUse)} depreciação/uso · ${eq.usefulUses} usos por unidade${isMaq && eq.kwh > 0 ? ` + ${String(eq.kwh).replace('.', ',')} kWh/hora` : ''}`}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, maxWidth: 340 }}>
           <div className="progress-track" style={{ flex: 1, minWidth: 70, height: 5 }}>
-            <div className="progress-fill" style={{ width: `${depPct}%`, background: depColor }} />
+            <div className="progress-fill" style={{ width: `${porTempo ? depPctTempo : depPct}%`, background: depColor }} />
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-            {totalUsos > 0 ? `${usos} de ${totalUsos} usos · ${depPct}% depreciado` : `${usos} usos`} · resta {fmtBRL(residual)}
+            {porTempo ? `${depPctTempo}% depreciado` : totalUsos > 0 ? `${usos} de ${totalUsos} usos · ${depPct}% depreciado` : `${usos} usos`} · resta {fmtBRL(residual)}
           </span>
         </div>
         {eq.baixas > 0 && <div style={{ fontSize: 11, color: 'var(--expense-text)', marginTop: 3 }}>{eq.baixas} unidade(s) baixada(s)</div>}
@@ -267,6 +278,18 @@ function EquipmentRow({ eq }: { eq: Equipment }) {
           <button className="pill sm" style={{ color: 'var(--income-text)', background: 'var(--income-soft)' }} onClick={() => setPrompt('compra')}>
             + Compra
           </button>
+          {porTempo && !eq.ativadoEm && q > 0 && (
+            <button
+              className="pill sm accent"
+              style={{ color: 'var(--on-accent, white)', background: 'var(--accent)' }}
+              onClick={() =>
+                window.confirm(`Ativar a depreciação de ${eq.name}?\n\nA partir de hoje o app lança ${fmtBRL(depMensal)} por mês no resultado, durante ${vidaMeses} meses. Não mexe no caixa.`) &&
+                ativar.mutate(eq.id)
+              }
+            >
+              ▶ Ativar
+            </button>
+          )}
           {q > 0 && (
             <button className="pill sm expense" onClick={() => setPrompt('baixa')}>
               Dar baixa

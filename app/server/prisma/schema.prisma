@@ -186,6 +186,13 @@ model Equipment {
   cost       Float    @default(0) // cost per unit
   usefulUses Float    @default(0) // uses per unit until fully depreciated
   kwh        Float    @default(0) // kWh per hour of use (maquina only)
+  /// 'uso' = depreciates per atendimento via ficha técnica (default);
+  /// 'tempo' = general asset (mirror, furniture) that depreciates monthly
+  /// once activated, over vidaMeses months.
+  depMode    String   @default("uso")
+  vidaMeses  Int      @default(0)
+  /// When monthly depreciation started ticking (YYYY-MM-DD); null = not yet.
+  ativadoEm  String?
   baixas     Float    @default(0) // units written off
   perdaBaixa Float    @default(0) // undepreciated value lost on write-off
   baixadoEm  String?

@@ -15,6 +15,7 @@ import {
   type CategoryRow,
 } from '../calc.js';
 import { ensureRecurringGenerated } from './recurring.js';
+import { ensureDepreciationGenerated } from '../depreciacao.js';
 import { computeReconciliation, reconcile } from '../reconciliation.js';
 import { requireOwnerForWrites } from '../auth.js';
 import { todayStr, daysBetween, numOr0 } from '../util.js';
@@ -46,6 +47,7 @@ function categoryName(categories: CategoryRow[] & { name?: string }[], id: strin
 router.get('/home', async (req: AuthedRequest, res) => {
   const businessId = req.businessId!;
   await ensureRecurringGenerated(businessId);
+  await ensureDepreciationGenerated(businessId);
   const data = await loadAll(businessId);
   res.json({
     alerts: buildAlerts(data),

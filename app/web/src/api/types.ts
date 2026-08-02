@@ -67,6 +67,10 @@ export interface Equipment {
   baixas: number;
   perdaBaixa: number;
   baixadoEm: string | null;
+  /** 'uso' = por atendimento (ficha); 'tempo' = ativo geral, mensal. */
+  depMode?: 'uso' | 'tempo';
+  vidaMeses?: number;
+  ativadoEm?: string | null;
   usos?: number;
   depreciacaoAcumulada?: number;
 }

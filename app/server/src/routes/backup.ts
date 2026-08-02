@@ -104,7 +104,7 @@ router.post('/restore', async (req: AuthedRequest, res) => {
     const eqIdMap = new Map<string, string>();
     for (const e of d.equipment || []) {
       const row = await tx.equipment.create({
-        data: { businessId, name: e.name, kind: e.kind || (e.kwh > 0 ? 'maquina' : 'utensilio'), qty: e.qty ?? 1, cost: e.cost || 0, usefulUses: e.usefulUses || 0, kwh: e.kwh || 0, baixas: e.baixas || 0, perdaBaixa: e.perdaBaixa || 0, baixadoEm: e.baixadoEm || null },
+        data: { businessId, name: e.name, kind: e.kind || (e.kwh > 0 ? 'maquina' : 'utensilio'), qty: e.qty ?? 1, cost: e.cost || 0, usefulUses: e.usefulUses || 0, kwh: e.kwh || 0, baixas: e.baixas || 0, perdaBaixa: e.perdaBaixa || 0, baixadoEm: e.baixadoEm || null, depMode: e.depMode || 'uso', vidaMeses: e.vidaMeses || 0, ativadoEm: e.ativadoEm || null },
       });
       eqIdMap.set(e.id, row.id);
     }

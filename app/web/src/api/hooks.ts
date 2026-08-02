@@ -138,7 +138,7 @@ export function useEquipment() {
 export function useSaveEquipment() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: (input: { id?: string; name: string; kind: string; qty?: number; cost: number; usefulUses: number; kwh?: number }) =>
+    mutationFn: (input: { id?: string; name: string; kind: string; qty?: number; cost: number; usefulUses: number; kwh?: number; depMode?: 'uso' | 'tempo'; vidaMeses?: number }) =>
       input.id ? api.put<Equipment>(`/equipment/${input.id}`, input) : api.post<Equipment>('/equipment', input),
     onSuccess: invalidate,
   });
@@ -153,6 +153,10 @@ export function useEquipmentDeleteImpact(id: string | null) {
     queryFn: () => api.get<DeleteImpact>(`/equipment/${id}/delete-impact`),
     enabled: !!id,
   });
+}
+export function useEquipmentAtivar() {
+  const invalidate = useInvalidateAll();
+  return useMutation({ mutationFn: (id: string) => api.post(`/equipment/${id}/ativar`), onSuccess: invalidate });
 }
 export function useEquipmentComprar() {
   const invalidate = useInvalidateAll();

@@ -32,6 +32,7 @@ const INTERNAL_CATEGORIES = new Set([
   'Sinal de agendamento',
   'Devoluções',
   'Brinde / uso interno',
+  'Depreciação',
 ]);
 
 type Mode = 'despesa' | 'receita' | 'socio';

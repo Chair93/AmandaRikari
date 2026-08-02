@@ -5,6 +5,7 @@ import { requireAuth, requireOwnerForWrites, type AuthedRequest } from '../auth.
 import { equipmentUsageCounts, equipmentDepreciation } from '../calc.js';
 import { todayStr } from '../util.js';
 import { deleteEquipmentCascade, equipmentDeleteImpact } from '../stockDeletion.js';
+import { ensureDepreciationGenerated, depTempoAcumulada } from '../depreciacao.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,24 +16,31 @@ const bodySchema = z.object({
   kind: z.enum(['utensilio', 'maquina']),
   qty: z.number().min(0).optional(),
   cost: z.number().min(0),
-  usefulUses: z.number().gt(0),
+  /** Required for depMode 'uso'; general (time-based) assets pass 0. */
+  usefulUses: z.number().min(0).optional(),
   kwh: z.number().min(0).optional(),
+  depMode: z.enum(['uso', 'tempo']).optional(),
+  vidaMeses: z.number().int().min(0).max(240).optional(),
 });
 
 router.get('/', async (req: AuthedRequest, res) => {
-  const [rows, txItems] = await Promise.all([
+  // Elapsed months post their depreciation before the list is computed, so
+  // opening Estoque is enough to keep general assets current.
+  await ensureDepreciationGenerated(req.businessId!);
+  const [rows, txItems, depTempo] = await Promise.all([
     prisma.equipment.findMany({ where: { businessId: req.businessId }, orderBy: { name: 'asc' } }),
     prisma.transactionItem.findMany({
       where: { transaction: { businessId: req.businessId }, kind: 'equipment' },
       select: { kind: true, equipmentId: true },
     }),
+    depTempoAcumulada(req.businessId!),
   ]);
   const usos = equipmentUsageCounts(txItems);
   res.json(
     rows.map((eq) => ({
       ...eq,
       usos: usos[eq.id] || 0,
-      depreciacaoAcumulada: equipmentDepreciation(eq, usos[eq.id] || 0),
+      depreciacaoAcumulada: eq.depMode === 'tempo' ? depTempo[eq.id] || 0 : equipmentDepreciation(eq, usos[eq.id] || 0),
     }))
   );
 });
@@ -51,8 +59,10 @@ router.post('/', async (req: AuthedRequest, res) => {
       // products got when the initial-stock field was removed.
       qty: d.qty ?? 0,
       cost: d.cost,
-      usefulUses: d.usefulUses,
+      usefulUses: d.usefulUses ?? 0,
       kwh: d.kind === 'maquina' ? d.kwh ?? 0 : 0,
+      depMode: d.depMode ?? 'uso',
+      vidaMeses: d.vidaMeses ?? 0,
     },
   });
   res.status(201).json(row);
@@ -66,8 +76,22 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const d = parsed.data;
   const row = await prisma.equipment.update({
     where: { id: existing.id },
-    data: { name: d.name, kind: d.kind, qty: d.qty ?? existing.qty, cost: d.cost, usefulUses: d.usefulUses, kwh: d.kind === 'maquina' ? d.kwh ?? 0 : 0 },
+    data: { name: d.name, kind: d.kind, qty: d.qty ?? existing.qty, cost: d.cost, usefulUses: d.usefulUses ?? existing.usefulUses, kwh: d.kind === 'maquina' ? d.kwh ?? 0 : 0, depMode: d.depMode ?? existing.depMode, vidaMeses: d.vidaMeses ?? existing.vidaMeses },
   });
+  res.json(row);
+});
+
+/** Flip the switch: a general asset starts depreciating monthly from today.
+ *  Runs the generator right away so the current month posts immediately. */
+router.post('/:id/ativar', async (req: AuthedRequest, res) => {
+  const existing = await prisma.equipment.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
+  if (!existing) return res.status(404).json({ error: 'not_found' });
+  if (existing.depMode !== 'tempo') return res.status(400).json({ error: 'Este bem deprecia pelo uso — ativação só vale pra ativos gerais (por tempo).' });
+  if (existing.vidaMeses <= 0) return res.status(400).json({ error: 'Cadastre a vida útil (meses) antes de ativar.' });
+  if (existing.qty <= 0) return res.status(400).json({ error: 'Dê entrada nas unidades (+ Compra) antes de ativar a depreciação.' });
+  if (existing.ativadoEm) return res.status(400).json({ error: 'Depreciação já ativada.' });
+  const row = await prisma.equipment.update({ where: { id: existing.id }, data: { ativadoEm: todayStr() } });
+  await ensureDepreciationGenerated(req.businessId!);
   res.json(row);
 });
 
