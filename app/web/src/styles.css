@@ -785,10 +785,29 @@ a {
 .field-row {
   display: flex;
   gap: 12px;
+  /* If a field can't shrink (iOS date inputs), it drops to its own line
+     instead of overlapping the neighbour. */
+  flex-wrap: wrap;
 }
 .field-row > .field {
-  flex: 1;
+  flex: 1 1 140px;
   min-width: 0;
+}
+
+/* iOS Safari refuses to shrink native date/time fields below their intrinsic
+   width, which made side-by-side Data + Valor overlap on the phone. Stripping
+   the native chrome restores normal flex behaviour; the min-height keeps the
+   field the same size as its text siblings. */
+input[type='date'].input,
+input[type='time'].input {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  max-width: 100%;
+}
+input[type='date'].input::-webkit-date-and-time-value,
+input[type='time'].input::-webkit-date-and-time-value {
+  text-align: left;
 }
 
 .input,
