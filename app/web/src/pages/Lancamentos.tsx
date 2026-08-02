@@ -47,7 +47,7 @@ export default function Lancamentos() {
 
   function onDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!window.confirm('Excluir este lançamento?')) return;
+    if (!window.confirm('Excluir este lançamento?\n\nEle some do caixa e dos relatórios — e o que veio junto (taxa de maquininha, uso de sala) sai também. Estoque e contas ligadas a ele voltam ao que eram.')) return;
     deleteTx.mutate(id);
   }
 
@@ -151,7 +151,7 @@ export default function Lancamentos() {
               ))}
             </div>
           ) : (
-            <div className="empty-state">Nenhum lançamento neste período.</div>
+            <div className="empty-state">Nada registrado neste mês. Use as setas ‹ › ali em cima pra ver outros meses, ou “Ver tudo”.</div>
           )}
         </div>
         {isOwner && (

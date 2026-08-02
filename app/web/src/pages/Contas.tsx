@@ -274,7 +274,7 @@ export default function Contas() {
 
   return (
     <>
-      <PageHeader title="Contas" subtitle="Contas a pagar, a receber e patrimônio líquido" />
+      <PageHeader title="Contas" subtitle="O que você tem pra receber e pra pagar, com data" />
       <div className="scroll-area">
         {(isLoading || error) && (
           <QueryState isLoading={isLoading} error={error} onRetry={refetch}>

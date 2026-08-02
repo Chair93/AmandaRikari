@@ -136,7 +136,7 @@ function EstoqueRow({ p }: { p: Product }) {
       {prompt === 'entrada' && (
         <PromptModal
           title={`Entrada de estoque — ${p.name}`}
-          description="Registra a chegada de novos pacotes e recalcula o custo médio."
+          description="Chegou produto! Diga quantos pacotes chegaram e quanto pagou em cada um — o app atualiza o estoque e o custo sozinho."
           fields={[
             { key: 'qty', label: 'Quantos pacotes entraram', defaultValue: '1', kind: 'qty' },
             { key: 'unitCost', label: 'Custo de cada pacote (R$)', defaultValue: String(p.packageCost).replace('.', ','), kind: 'money' },
@@ -396,7 +396,7 @@ export default function Estoque() {
 
   return (
     <>
-      <PageHeader title="Estoque" subtitle="Estoque operacional, descartáveis e ativos" />
+      <PageHeader title="Estoque" subtitle="Seus produtos, descartáveis e equipamentos" />
       <div className="scroll-area">
         <div className="page">
           <div className="card" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 26 }}>

@@ -363,7 +363,7 @@ function TransactionForm({
 
   async function onDelete() {
     if (!editingTx) return;
-    if (!window.confirm('Excluir este lançamento?')) return;
+    if (!window.confirm('Excluir este lançamento?\n\nEle some do caixa e dos relatórios — e o que veio junto (taxa de maquininha, uso de sala) sai também.')) return;
     await deleteTx.mutateAsync(editingTx.id);
     onClose();
   }
@@ -733,7 +733,7 @@ function TransactionForm({
               </label>
               {(items.length > 0 || numOr0(distanciaKm) > 0) && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10, marginTop: 10 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Custo variável estimado (itens + desloc.)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Custo estimado (produtos usados + deslocamento)</span>
                   <span style={{ fontWeight: 600 }}>{fmtBRL(variableCostPreview)}</span>
                 </div>
               )}

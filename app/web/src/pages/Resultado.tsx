@@ -77,7 +77,7 @@ export default function Resultado() {
   if (isLoading || error || !data) {
     return (
       <>
-        <PageHeader title="Relatórios" subtitle="DRE, balanço patrimonial e arquivos para o contador" />
+        <PageHeader title="Relatórios" subtitle="Os números do contador — pode olhar sem medo, mas não precisa mexer" />
         <div className="scroll-area">
           <QueryState isLoading={isLoading} error={error} onRetry={refetch}>
             <div />
@@ -98,7 +98,7 @@ export default function Resultado() {
     <>
       <PageHeader
         title="Relatórios"
-        subtitle="DRE, balanço patrimonial e arquivos para o contador"
+        subtitle="Os números do contador — pode olhar sem medo, mas não precisa mexer"
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <PeriodNav mode={mode} onModeChange={setMode} monthOffset={monthOffset} onMonthOffsetChange={setMonthOffset} yearOffset={yearOffset} onYearOffsetChange={setYearOffset} monthLabel={monthLabelFromOffset(monthOffset)} yearLabel={String(year)} />

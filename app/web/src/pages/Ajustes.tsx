@@ -203,7 +203,7 @@ export default function Ajustes() {
     <>
       <PageHeader
         title="Ajustes"
-        subtitle="Taxas, custos de referência, pró-labore, meta e backup"
+        subtitle="Configurações do app — no dia a dia não precisa mexer aqui"
         right={
           <span className="badge" style={salvando ? { background: 'var(--warning-soft)', color: 'var(--warning-text)' } : { background: 'var(--income-soft)', color: 'var(--income-text)' }}>
             {salvando ? 'Salvando…' : '✓ salva sozinho ao sair do campo'}

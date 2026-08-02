@@ -27,14 +27,41 @@ const PASSOS: { titulo: string; como: string[] }[] = [
     titulo: '🧾 Mandar recibo',
     como: ['Clientes → nome dela → no Histórico, toque em "recibo"', 'Dá pra copiar, mandar no WhatsApp ou salvar em PDF'],
   },
+  {
+    titulo: '💵 Cliente vai pagar depois (fiado)',
+    como: [
+      'Registre o atendimento normal — em "Recebimento", toque em "Fica pra depois" (ou "Recebi uma parte")',
+      'O que faltar vira uma continha no nome dela, na aba Contas',
+      'Quando ela pagar: Contas → toque na conta → "Recebi". Tem até botão de cobrar pelo WhatsApp 💬',
+    ],
+  },
+  {
+    titulo: '🛍️ Vender um produto (sem atendimento)',
+    como: ['Início → "Vender produto"', 'Escolha o produto — o preço e o estoque já aparecem', 'Dá desconto se quiser e Salvar. O estoque baixa sozinho'],
+  },
+  {
+    titulo: '📦 Pacote de sessões',
+    como: [
+      'Vender: Início → "Vender pacote" — escolha cliente, sessões e valor',
+      'A cada visita: Clientes → nome dela → "Usar sessão"',
+      'O app desconta a sessão e baixa os produtos usados, tudo sozinho',
+    ],
+  },
+  {
+    titulo: '🧴 Chegou produto novo? Estoque estranho?',
+    como: [
+      'Chegou compra: Estoque → "+ Entrada" no produto — diga quantos e quanto pagou',
+      'Apareceu aviso vermelho de estoque? Toque em "Contagem", conte o que tem na prateleira e digite — o app acerta o resto',
+    ],
+  },
 ];
 
 export default function GuideModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Como usar no dia a dia" onClose={onClose}>
       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55 }}>
-        O dia a dia inteiro acontece em duas telas: <strong>Início</strong> e <strong>Agenda</strong>. As outras abas (Caixa, Contas, Relatórios) são os números do negócio — pode
-        olhar sem medo, <strong>olhar não estraga nada</strong>.
+        O dia a dia inteiro acontece em duas telas: <strong>Início</strong> e <strong>Agenda</strong>. As abas Caixa e Contas mostram o dinheiro — pode olhar sem medo,{' '}
+        <strong>olhar não estraga nada</strong>. Já <strong>Relatórios</strong> e <strong>Ajustes</strong> são as telas "de contador": pode deixar pra quem cuida dos números. 😉
       </div>
       {PASSOS.map((p) => (
         <div key={p.titulo} style={{ background: 'var(--surface-2)', borderRadius: 14, padding: '12px 16px' }}>
