@@ -209,7 +209,39 @@ router.post('/:id/use-session', async (req: AuthedRequest, res) => {
 router.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.package.findFirst({ where: { id: req.params.id, businessId: req.businessId } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
-  await prisma.package.delete({ where: { id: existing.id } });
+  const businessId = req.businessId!;
+  // Deleting a package unwinds its whole story: sale + sessions (giving
+  // consumed products back to the shelf), their card/room fees (adjusting
+  // the room owner's monthly bill), installment receivables and any
+  // settlement cash entries — so caixa, DRE and balanço land exactly where
+  // they were before the sale.
+  await prisma.$transaction(async (tx) => {
+    const txs = await tx.transaction.findMany({ where: { businessId, packageId: existing.id }, include: { items: true } });
+    const products = await tx.product.findMany({ where: { businessId }, select: { id: true, packageQty: true } });
+    for (const t of txs) {
+      if (t.consumoBaixado && t.items.length) {
+        await applyProductConsumption(
+          tx,
+          t.items.filter((it) => it.kind === 'product' && it.productId).map((it) => ({ productId: it.productId!, qty: it.qty })),
+          products,
+          'restore'
+        );
+      }
+      const salaFee = await tx.transaction.findFirst({ where: { feeOf: t.id, accrualOnly: true } });
+      if (salaFee) await adjustSalaBill(tx, businessId, salaFee.date, -salaFee.amount, '');
+    }
+    const txIds = txs.map((t) => t.id);
+    if (txIds.length) {
+      await tx.transaction.deleteMany({ where: { feeOf: { in: txIds } } });
+    }
+    // Installment bills: settled ones drop their settlement cash entry too.
+    const bills = await tx.bill.findMany({ where: { businessId, packageId: existing.id }, select: { id: true, txId: true } });
+    const settleTxIds = bills.map((b) => b.txId).filter(Boolean) as string[];
+    if (settleTxIds.length) await tx.transaction.deleteMany({ where: { id: { in: settleTxIds } } });
+    await tx.bill.deleteMany({ where: { businessId, packageId: existing.id } });
+    if (txIds.length) await tx.transaction.deleteMany({ where: { id: { in: txIds } } });
+    await tx.package.delete({ where: { id: existing.id } });
+  });
   res.status(204).end();
 });
 

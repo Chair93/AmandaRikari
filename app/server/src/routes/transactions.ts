@@ -297,6 +297,14 @@ router.put('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId }, include: { sales: true, items: true } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
   const d = parsed.data;
+  // Generated/linked entries can't be edited in place — each one has a
+  // counterpart (stock, average cost, asset, bill) that a raw edit would
+  // silently desync. The message always points at the right lever.
+  if (existing.feeOf) return res.status(400).json({ error: 'Taxas e uso de sala são automáticos — edite o atendimento que os gerou.' });
+  if (existing.accrualOnly && existing.productId) return res.status(400).json({ error: 'Ajustes de inventário e brindes nascem na tela de Estoque — use a Contagem pra corrigir o estoque.' });
+  if (existing.accrualOnly && existing.equipmentId) return res.status(400).json({ error: 'Depreciação é automática — pra mudar, edite a vida útil do bem ou dê baixa nele.' });
+  if (existing.estoque || existing.ativo) return res.status(400).json({ error: 'Compras de estoque/bens não podem ser editadas (o custo médio já foi calculado) — exclua e refaça a entrada.' });
+  if (existing.packageId) return res.status(400).json({ error: 'Lançamentos de pacote são automáticos — mexa no pacote pela ficha do cliente.' });
   // A fiado atendimento is a small web (accrual entry + cash leg + open
   // receivable) — editing it in place would silently desync the three.
   const fiadoArtifacts = await prisma.bill.findFirst({ where: { fiadoOf: existing.id }, select: { id: true } });
@@ -448,9 +456,50 @@ router.put('/:id', async (req: AuthedRequest, res) => {
 router.delete('/:id', async (req: AuthedRequest, res) => {
   const existing = await prisma.transaction.findFirst({ where: { id: req.params.id, businessId: req.businessId }, include: { sales: true, items: true } });
   if (!existing) return res.status(404).json({ error: 'not_found' });
+  // Same protection as PUT: children and stock-linked accruals only make
+  // sense next to their counterpart.
+  if (existing.feeOf) return res.status(400).json({ error: 'Taxas e uso de sala são automáticos — exclua (ou edite) o atendimento que os gerou.' });
+  if (existing.accrualOnly && existing.productId) return res.status(400).json({ error: 'Pra desfazer um ajuste de inventário ou brinde, faça uma nova Contagem no Estoque — ela acerta estoque e resultado juntos.' });
+  if (existing.accrualOnly && existing.equipmentId) return res.status(400).json({ error: 'Depreciação é automática e acompanha o bem — pra parar, dê baixa no bem.' });
+  if (existing.packageId && existing.cashOnly) return res.status(400).json({ error: 'Essa é a venda do pacote — pra desfazer, exclua o pacote na ficha do cliente.' });
+  if (existing.estoque && existing.productId && (existing.note || '').startsWith('Diferença de custo')) {
+    return res.status(400).json({ error: 'Essa diferença já foi rateada no custo médio — excluir deixaria o custo errado. Se lançou errado, compense com nova Dif. de custo ou Contagem.' });
+  }
   await prisma.$transaction(async (tx) => {
     for (const sl of existing.sales) {
       await tx.product.update({ where: { id: sl.productId }, data: { stock: { increment: sl.qty } } });
+    }
+    // Deleting a stock/asset purchase really undoes it: the units leave the
+    // shelf and the weighted-average cost rolls back (qty rides in the note).
+    const qtyNote = (existing.note || '').match(/x([\d.]+)\s*$/);
+    if (existing.estoque && existing.productId && qtyNote) {
+      const qty = Number(qtyNote[1]);
+      const p = await tx.product.findFirst({ where: { id: existing.productId } });
+      if (p && qty > 0) {
+        const unitCost = existing.amount / qty;
+        const prevStock = round2(p.stock - qty);
+        let prevAvg = p.avgCost;
+        if (prevStock > 0.005) {
+          const calc = (p.avgCost * p.stock - unitCost * qty) / prevStock;
+          if (isFinite(calc) && calc >= 0) prevAvg = calc;
+        }
+        await tx.product.update({ where: { id: p.id }, data: { stock: prevStock, avgCost: prevAvg } });
+      }
+    }
+    if (existing.ativo && existing.equipmentId && qtyNote) {
+      const qty = Number(qtyNote[1]);
+      if (qty > 0) await tx.equipment.updateMany({ where: { id: existing.equipmentId }, data: { qty: { decrement: qty } } });
+    }
+    // Undoing a package session gives the session back to the package.
+    if (existing.packageId && existing.accrualOnly && existing.type === 'receita') {
+      await tx.package.updateMany({ where: { id: existing.packageId, used: { gt: 0 } }, data: { used: { decrement: 1 } } });
+    }
+    // A settled fiado bill dies with the atendimento (FK cascade) — its
+    // settlement cash entry has to go too, or the caixa keeps money whose
+    // story was erased.
+    const fiadoSettled = await tx.bill.findMany({ where: { fiadoOf: existing.id, txId: { not: null } }, select: { txId: true } });
+    if (fiadoSettled.length) {
+      await tx.transaction.deleteMany({ where: { id: { in: fiadoSettled.map((b) => b.txId!) } } });
     }
     if (existing.consumoBaixado) {
       const prods = await tx.product.findMany({ where: { businessId: req.businessId! }, select: { id: true, packageQty: true } });
