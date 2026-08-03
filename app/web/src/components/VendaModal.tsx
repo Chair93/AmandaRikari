@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useClients, useProducts, useSaveTransaction, useSettings } from '../api/hooks';
 import type { PaymentMethod, Settings } from '../api/types';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr } from '../format';
@@ -227,7 +228,7 @@ export default function VendaModal({ onClose }: { onClose: () => void }) {
         </label>
         <label className="field">
           Data
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField value={date} onChange={setDate} />
         </label>
       </div>
 

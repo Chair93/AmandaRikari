@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { parseNumberBR } from '../format';
 
 export interface PromptField {
@@ -101,11 +102,12 @@ export default function PromptModal({
                   </option>
                 ))}
               </select>
+            ) : f.kind === 'date' ? (
+              <DateField value={values[f.key] ?? ''} onChange={(iso) => setValues((v) => ({ ...v, [f.key]: iso }))} ariaLabel={f.label} />
             ) : (
               <input
                 className="input"
-                type={f.kind === 'date' ? 'date' : undefined}
-                inputMode={f.kind === 'text' || f.kind === 'date' ? undefined : 'decimal'}
+                inputMode={f.kind === 'text' ? undefined : 'decimal'}
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={i === 0}
                 value={values[f.key] ?? ''}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useSaveProduct } from '../api/hooks';
 import type { Product } from '../api/types';
 import { fmtBRL, numOr0, UNIT_LABEL } from '../format';
@@ -101,7 +102,7 @@ export default function ProductModal({
       <div className="field-row">
         <label className="field">
           Validade (opcional)
-          <input className="input" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+          <DateField value={expiresAt} onChange={setExpiresAt} />
         </label>
         <label className="field">
           Avisar estoque baixo em (pacotes)

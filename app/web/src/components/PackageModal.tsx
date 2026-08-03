@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useClients, useSavePackage, useServices } from '../api/hooks';
 import { fmtBRL, numOr0, parseNumberBR, PAYMENT_LABEL, todayStr } from '../format';
 
@@ -123,7 +124,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
         </label>
         <label className="field">
           Data da venda
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField value={date} onChange={setDate} />
         </label>
       </div>
       <div className="field">
@@ -166,7 +167,7 @@ export default function PackageModal({ onClose, defaultClientId }: { onClose: ()
           </label>
           <label className="field">
             1º vencimento
-            <input className="input" type="date" value={primeiroVenc} onChange={(e) => setPrimeiroVenc(e.target.value)} />
+            <DateField value={primeiroVenc} onChange={setPrimeiroVenc} />
           </label>
         </div>
       )}

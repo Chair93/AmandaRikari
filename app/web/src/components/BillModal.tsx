@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useCategories, useClients, useSaveBill } from '../api/hooks';
 import type { Bill } from '../api/types';
 import { parseNumberBR, todayStr } from '../format';
@@ -80,7 +81,7 @@ export default function BillModal({
         </label>
         <label className="field">
           Vencimento
-          <input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <DateField value={due} onChange={setDue} />
         </label>
       </div>
       {kind === 'receber' && (

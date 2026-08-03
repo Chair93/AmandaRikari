@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useClients, useDeleteAppointment, useSaveAppointment, useServices } from '../api/hooks';
 import type { Appointment } from '../api/types';
 import { fmtBRL, numOr0 } from '../format';
@@ -131,7 +132,7 @@ export default function AppointmentModal({
       <div className="field-row">
         <label className="field">
           Data
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField value={date} onChange={setDate} />
         </label>
         <label className="field">
           Horário

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import PromptModal from './PromptModal';
 import { useCategories, useClients, useDeleteTransaction, useDevolverTransacao, useEquipment, useProductInventario, useProducts, useSaveTransaction, useServices, useSettings, useTransaction } from '../api/hooks';
 import { useAuth } from '../auth/AuthContext';
@@ -459,7 +460,7 @@ function TransactionForm({
               </label>
               <label className="field">
                 Data
-                <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <DateField value={date} onChange={setDate} />
               </label>
               <label className="field">
                 Cliente (opcional)
@@ -507,7 +508,7 @@ function TransactionForm({
               <div className="field-row">
                 <label className="field">
                   Data
-                  <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <DateField value={date} onChange={setDate} />
                 </label>
                 <label className="field">
                   Valor
@@ -606,7 +607,7 @@ function TransactionForm({
                         )}
                         <label className="field">
                           Combinado pra quando?
-                          <input className="input" type="date" value={fiadoVenc} onChange={(e) => setFiadoVenc(e.target.value)} />
+                          <DateField value={fiadoVenc} onChange={setFiadoVenc} />
                         </label>
                       </div>
                       <span style={{ fontWeight: 500, fontSize: 11.5, color: 'var(--text-muted)' }}>
@@ -795,7 +796,7 @@ function TransactionForm({
       {mode === 'socio' && (
         <label className="field">
           Data
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField value={date} onChange={setDate} />
         </label>
       )}
       <label className="field">

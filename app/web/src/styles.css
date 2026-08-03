@@ -833,6 +833,12 @@ select.input:focus {
   outline: 2px solid var(--accent-text);
   outline-offset: -1px;
 }
+/* DateField: the real (invisible) input lives inside the styled wrapper, so
+   keyboard focus has to light up the wrapper instead. */
+.date-field:focus-within {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -1px;
+}
 
 .tab-row {
   display: flex;

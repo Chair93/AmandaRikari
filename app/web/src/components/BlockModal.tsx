@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from './Modal';
+import DateField from './DateField';
 import { useCreateAgendaBlock } from '../api/hooks';
 import { numOr0 } from '../format';
 
@@ -40,7 +41,7 @@ export default function BlockModal({ onClose, defaultDate }: { onClose: () => vo
       </div>
       <label className="field">
         Data
-        <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateField value={date} onChange={setDate} />
       </label>
       <button
         onClick={() => setAllDay((v) => !v)}
